@@ -10,7 +10,12 @@
 #include "DownloadQueueModel.h"
 #include "WulforUtil.h"
 
+#if QT_VERSION >= 0x050000
+#include <QtWidgets>
+#else
 #include <QtGui>
+#endif
+
 #include <QFileInfo>
 #include <QList>
 #include <QStringList>
@@ -38,9 +43,9 @@ static inline void printRoot(DownloadQueueItem *i, const QString &dlmtr){
     if (!i)
         return;
 
-    qDebug() << dlmtr.toAscii().constData() << i->data(COLUMN_DOWNLOADQUEUE_NAME).toString().toAscii().constData();
+	qDebug() << dlmtr.toUtf8().constData() << i->data(COLUMN_DOWNLOADQUEUE_NAME).toString().toUtf8().constData();
 
-    foreach (DownloadQueueItem *child, i->childItems)
+    for (const auto &child : i->childItems)
         printRoot(child, dlmtr + "-");
 }
 #endif
@@ -350,7 +355,7 @@ static void sortRecursive(int column, Qt::SortOrder order, DownloadQueueItem *i)
     else if (order == Qt::DescendingOrder)
         dcomp.sort(column, i->childItems);
 
-    foreach(DownloadQueueItem *ii, i->childItems)
+    for (const auto &ii : i->childItems)
         sortRecursive(column, order, ii);
 }
 
@@ -442,7 +447,7 @@ void DownloadQueueModel::updItem(const QMap<QString, QVariant> &map){
 }
 
 bool DownloadQueueModel::remItem(const QMap<QString, QVariant> &map){
-    DownloadQueueItem *item = createPath(map["PATH"].toString());;
+    DownloadQueueItem *item = createPath(map["PATH"].toString());
 
     if (item->childItems.size() < 1)
         return false;
@@ -580,7 +585,7 @@ DownloadQueueItem *DownloadQueueModel::createPath(const QString & path){
     for (int i = 0; i < list.size(); i++){
         found = false;
 
-        foreach(DownloadQueueItem *item, root->childItems){
+        for (const auto &item : root->childItems){
             if (!item->dir)
                 continue;
 
@@ -640,7 +645,7 @@ void DownloadQueueModel::repaint(){
 DownloadQueueItem *DownloadQueueModel::findTarget(const DownloadQueueItem *item, const QString &name){
     DownloadQueueItem *target = NULL;
 
-    foreach(DownloadQueueItem *i, item->childItems){
+    for (const auto &i : item->childItems){
         if (i->data(COLUMN_DOWNLOADQUEUE_NAME).toString() == name){
             target = i;
 

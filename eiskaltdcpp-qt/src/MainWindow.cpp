@@ -52,6 +52,7 @@
 #include "QuickConnect.h"
 #include "SearchFrame.h"
 #include "ADLS.h"
+#include "CmdDebug.h"
 #include "Settings.h"
 #include "FavoriteHubs.h"
 #include "PublicHubs.h"
@@ -143,6 +144,7 @@ public:
         QMenu   *menuTools;
         QAction *toolsSearch;
         QAction *toolsADLS;
+        QAction *toolsCmdDebug;
         QAction *toolsTransfers;
         QAction *toolsDownloadQueue;
         QAction *toolsQueuedUsers;
@@ -277,12 +279,12 @@ MainWindow::MainWindow (QWidget *parent):
 
     if (WBGET(WB_APP_REMOVE_NOT_EX_DIRS)){
         StringPairList directories = ShareManager::getInstance()->getDirectories();
-        for (auto it = directories.begin(); it != directories.end(); ++it){
-            QDir dir(_q(it->second));
+        for (const auto &it : directories){
+            QDir dir(_q(it.second));
 
             if (!dir.exists()){
                 try {
-                    ShareManager::getInstance()->removeDirectory(it->second);
+                    ShareManager::getInstance()->removeDirectory(it.second);
                 }
                 catch (const std::exception&){}
             }
@@ -611,7 +613,7 @@ void MainWindow::loadSettings(){
     QString dockwidgetsState = WSGET(WS_MAINWINDOW_STATE);
 
     if (!dockwidgetsState.isEmpty())
-        this->restoreState(QByteArray::fromBase64(dockwidgetsState.toAscii()));
+        this->restoreState(QByteArray::fromBase64(dockwidgetsState.toUtf8()));
 
     d->fBar->setVisible(WBGET(WB_TOOLS_PANEL_VISIBLE));
     d->panelsTools->setChecked(WBGET(WB_TOOLS_PANEL_VISIBLE));
@@ -672,7 +674,7 @@ void MainWindow::saveSettings(){
     if (WBGET(WB_MAINWINDOW_REMEMBER))
         WBSET(WB_MAINWINDOW_HIDE, !isVisible());
 
-    QString dockwidgetsState = QString::fromAscii(saveState().toBase64());
+    QString dockwidgetsState = QString::fromUtf8(saveState().toBase64());
     WSSET(WS_MAINWINDOW_STATE, dockwidgetsState);
 
     stateIsSaved = true;
@@ -793,6 +795,10 @@ void MainWindow::initActions(){
         d->toolsADLS->setIcon(WU->getPixmap(WulforUtil::eiADLS));
         connect(d->toolsADLS, SIGNAL(triggered()), this, SLOT(slotToolsADLS()));
 
+        d->toolsCmdDebug = new QAction("", this);
+        d->toolsCmdDebug->setObjectName("toolsCmdDebug");
+        connect(d->toolsCmdDebug, SIGNAL(triggered()), this, SLOT(slotToolsCmdDebug()));
+
         d->toolsTransfers = new QAction("", this);
         d->toolsTransfers->setObjectName("toolsTransfers");
         SM->registerShortcut(d->toolsTransfers, tr("Ctrl+T"));
@@ -815,11 +821,13 @@ void MainWindow::initActions(){
 
         d->toolsFinishedDownloads = new QAction("", this);
         d->toolsFinishedDownloads->setObjectName("toolsFinishedDownloads");
+        SM->registerShortcut(d->toolsFinishedDownloads, tr("Ctrl+["));
         d->toolsFinishedDownloads->setIcon(WU->getPixmap(WulforUtil::eiDOWNLIST));
         connect(d->toolsFinishedDownloads, SIGNAL(triggered()), this, SLOT(slotToolsFinishedDownloads()));
 
         d->toolsFinishedUploads = new QAction("", this);
         d->toolsFinishedUploads->setObjectName("toolsFinishedUploads");
+        SM->registerShortcut(d->toolsFinishedUploads, tr("Ctrl+]"));
         d->toolsFinishedUploads->setIcon(WU->getPixmap(WulforUtil::eiUPLIST));
         connect(d->toolsFinishedUploads, SIGNAL(triggered()), this, SLOT(slotToolsFinishedUploads()));
 
@@ -916,6 +924,7 @@ void MainWindow::initActions(){
 
         d->toolsSwitchSpeedLimit = new QAction("", this);
         d->toolsSwitchSpeedLimit->setObjectName("toolsSwitchSpeedLimit");
+        SM->registerShortcut(d->toolsSwitchSpeedLimit, tr("Ctrl+K"));
         d->toolsSwitchSpeedLimit->setIcon(BOOLSETTING(THROTTLE_ENABLE)? WU->getPixmap(WulforUtil::eiSPEED_LIMIT_ON) : WU->getPixmap(WulforUtil::eiSPEED_LIMIT_OFF));
         d->toolsSwitchSpeedLimit->setCheckable(true);
         d->toolsSwitchSpeedLimit->setChecked(BOOLSETTING(THROTTLE_ENABLE));
@@ -983,6 +992,7 @@ void MainWindow::initActions(){
 
         d->toolsMenuActions << d->toolsSearch
                 << d->toolsADLS
+                << d->toolsCmdDebug
                 << separator0
                 << d->toolsTransfers
                 << d->toolsDownloadQueue
@@ -1021,6 +1031,7 @@ void MainWindow::initActions(){
                 << separator2
                 << d->hubsFavoriteHubs
                 << d->hubsFavoriteUsers
+                << d->toolsQueuedUsers
                 << d->toolsSearch
                 << d->hubsPublicHubs
                 << separator3
@@ -1366,6 +1377,8 @@ void MainWindow::retranslateUi(){
 
         d->toolsADLS->setText(tr("ADLSearch"));
 
+        d->toolsCmdDebug->setText(tr("CmdDebug"));
+
         d->toolsSwitchSpeedLimit->setText(tr("Speed limit On/Off"));
 
 #ifdef USE_JS
@@ -1423,12 +1436,12 @@ void MainWindow::initToolbar(){
     d->fBar = new ToolBar(this);
     d->fBar->setObjectName("fBar");
 
-    QStringList enabled_actions = QString(QByteArray::fromBase64(WSGET(WS_MAINWINDOW_TOOLBAR_ACTS).toAscii())).split(";", QString::SkipEmptyParts);
+    QStringList enabled_actions = QString(QByteArray::fromBase64(WSGET(WS_MAINWINDOW_TOOLBAR_ACTS).toUtf8())).split(";", QString::SkipEmptyParts);
 
     if (enabled_actions.isEmpty())
         d->fBar->addActions(d->toolBarActions);
     else {
-        foreach (const QString &objName, enabled_actions){
+        for (const auto &objName : enabled_actions){
             QAction *act = findChild<QAction*>(objName);
 
             if (act)
@@ -1596,6 +1609,13 @@ ArenaWidget *MainWindow::widgetForRole(ArenaWidget::Role r) const{
 
             break;
         }
+    case ArenaWidget::CmdDebug:
+    {
+        awgt = ArenaWidgetFactory().create<dcpp::Singleton, CmdDebug>();
+        awgt->setToolButton(d->toolsCmdDebug);
+
+        break;
+    }
     case ArenaWidget::QueuedUsers:
         {
             awgt = ArenaWidgetFactory().create<dcpp::Singleton, QueuedUsers>();
@@ -1614,7 +1634,7 @@ void MainWindow::newHubFrame(QString address, QString enc){
     if (address.isEmpty())
         return;
 
-    address = QUrl::fromPercentEncoding(address.toAscii());
+    address = QUrl::fromPercentEncoding(address.toUtf8());
 
     HubFrame *fr = qobject_cast<HubFrame*>(HubManager::getInstance()->getHub(address));
 
@@ -1795,8 +1815,8 @@ void MainWindow::setStatusMessage(QString msg){
 void MainWindow::autoconnect(){
     const FavoriteHubEntryList& fl = FavoriteManager::getInstance()->getFavoriteHubs();
 
-    for (auto i = fl.begin(); i != fl.end(); ++i) {
-        FavoriteHubEntry* entry = *i;
+    for (const auto &i : fl) {
+        FavoriteHubEntry* entry = i;
 
         if (entry->getConnect()) {
             if (entry->getNick().empty() && SETTING(NICK).empty())
@@ -1810,7 +1830,7 @@ void MainWindow::autoconnect(){
 }
 
 void MainWindow::parseCmdLine(const QStringList &args){
-    foreach (const QString &arg, args){
+    for (const auto &arg : args){
         if (arg.startsWith("magnet:?")){
             Magnet m(this);
             m.setLink(arg);
@@ -1877,7 +1897,7 @@ void MainWindow::redrawToolPanel(){
     PMWindow *pm = NULL;
     bool has_unread = false;
 
-    for(; it != end; ++it){ //also redraw all widget menu items and change window title if needed
+    for (; it != end; ++it){ //also redraw all widget menu items and change window title if needed
         awgt = it.value();
         it.key()->setText(awgt->getArenaShortTitle());
         it.key()->setIcon(awgt->getPixmap());
@@ -1997,7 +2017,7 @@ void MainWindow::toggleSingletonWidget(ArenaWidget *a){
         throw std::runtime_error(_tq(Q_FUNC_INFO) + ": NULL argument");
 
     if (sender() && qobject_cast<QAction*>(sender()) && a->getWidget()){
-        QAction *act = reinterpret_cast<QAction*>(sender());;
+        QAction *act = reinterpret_cast<QAction*>(sender());
 
         act->setCheckable(true);
 
@@ -2035,7 +2055,7 @@ void MainWindow::toggleMainMenu(bool showMenu){
 
             QMenu *m = new QMenu(this);
 
-            foreach (QAction *a, menuBar()->actions())
+            for (const auto &a : menuBar()->actions())
                 m->addAction(a);
 
             compactMenus->setMenu(m);
@@ -2071,7 +2091,7 @@ void MainWindow::showShareBrowser(dcpp::UserPtr usr, const QString &file, const 
 void MainWindow::reloadSomeSettings(){
     Q_D(MainWindow);
 
-    foreach (ArenaWidget *awgt, d->menuWidgetsHash.values()){
+    for (const auto &awgt : d->menuWidgetsHash.values()){
         HubFrame *fr = qobject_cast<HubFrame *>(awgt->getWidget());
 
         if (fr)
@@ -2176,6 +2196,11 @@ void MainWindow::slotHubsReconnect(){
 
 void MainWindow::slotToolsADLS(){
     toggleSingletonWidget(widgetForRole(ArenaWidget::ADLS));
+}
+
+void MainWindow::slotToolsCmdDebug()
+{
+    toggleSingletonWidget(widgetForRole(ArenaWidget::CmdDebug));
 }
 
 void MainWindow::slotToolsSearch() {
@@ -2553,7 +2578,7 @@ void MainWindow::slotToolbarCustomization() {
     toolButtonStyle->addAction(tr("Text beside icons"))->setData(Qt::ToolButtonTextBesideIcon);
     toolButtonStyle->addAction(tr("Text under icons"))->setData(Qt::ToolButtonTextUnderIcon);
 
-    foreach (QAction *a, toolButtonStyle->actions()){
+    for (const auto &a : toolButtonStyle->actions()){
         a->setCheckable(true);
         a->setChecked(d->fBar->toolButtonStyle() == static_cast<Qt::ToolButtonStyle>(a->data().toInt()));
     }
@@ -2587,7 +2612,7 @@ void MainWindow::slotToolbarCustomizerDone(const QList<QAction*> &enabled){
 
     QStringList enabled_list;
 
-    foreach (QAction *act, enabled){
+    for (const auto &act : enabled){
         if (!act)
             continue;
 
@@ -2597,7 +2622,7 @@ void MainWindow::slotToolbarCustomizerDone(const QList<QAction*> &enabled){
 
     initFavHubMenu();
 
-    WSSET(WS_MAINWINDOW_TOOLBAR_ACTS, enabled_list.join(";").toAscii().toBase64());
+    WSSET(WS_MAINWINDOW_TOOLBAR_ACTS, enabled_list.join(";").toUtf8().toBase64());
 }
 
 void MainWindow::slotAboutOpenUrl(){
@@ -2605,16 +2630,16 @@ void MainWindow::slotAboutOpenUrl(){
 
     QAction *act = qobject_cast<QAction *>(sender());
     if (act == d->aboutHomepage){
-        QDesktopServices::openUrl(QUrl("http://code.google.com/p/eiskaltdc/"));
+        QDesktopServices::openUrl(QUrl("http://github.com/eiskaltdcpp/eiskaltdcpp/"));
     }
     else if (act == d->aboutSource){
         QDesktopServices::openUrl(QUrl("http://github.com/eiskaltdcpp/eiskaltdcpp/"));
     }
     else if (act == d->aboutIssues){
-        QDesktopServices::openUrl(QUrl("http://code.google.com/p/eiskaltdc/issues/list"));
+        QDesktopServices::openUrl(QUrl("https://github.com/eiskaltdcpp/eiskaltdcpp/issues"));
     }
     else if (act == d->aboutWiki){
-        QDesktopServices::openUrl(QUrl("http://code.google.com/p/eiskaltdc/w/list"));
+        QDesktopServices::openUrl(QUrl("https://github.com/eiskaltdcpp/eiskaltdcpp/wiki"));
     }
     else if (act == d->aboutChangelog){
         // Now available: ChangeLog.txt, ChangeLog_ru.txt, ChangeLog_uk.txt
@@ -2622,7 +2647,7 @@ void MainWindow::slotAboutOpenUrl(){
     }
 }
 
-void MainWindow::slotAboutClient(){
+void MainWindow::slotAboutClient() {
     About a(this);
 
     double ratio;
@@ -2646,8 +2671,8 @@ void MainWindow::slotAboutClient(){
                             ""
                             "DC++ core version: %1 (modified)<br/><br/>"
                             ""
-                            "Home page: <a href=\"http://code.google.com/p/eiskaltdc/\">"
-                            "http://code.google.com/p/eiskaltdc/</a><br/><br/>"
+                            "Home page: <a href=\"https://github.com/eiskaltdcpp/eiskaltdcpp/\">"
+                            "https://github.com/eiskaltdcpp/eiskaltdcpp/</a><br/><br/>"
                             ""
                             "Total up: <b>%2</b><br/>"
                             "Total down: <b>%3</b><br/>"
@@ -2662,24 +2687,24 @@ void MainWindow::slotAboutClient(){
     a.textBrowser_AUTHORS->document()->setDefaultStyleSheet(html_format);
 
     a.textBrowser_AUTHORS->setText(
-        tr("Please use <a href=\"http://code.google.com/p/eiskaltdc/issues/list\">"
-        "http://code.google.com/p/eiskaltdc/issues/list</a> to report bugs.<br/>")+
+        tr("Please use <a href=\"https://github.com/eiskaltdcpp/eiskaltdcpp/issues\">"
+        "https://github.com/eiskaltdcpp/eiskaltdcpp/issues</a> to report bugs.<br/>")+
         QString("<br/>")+
         tr("<b>Developers</b><br/>")+
         QString("<br/>")+
         QString("&nbsp; 2009-2012 <a href=\"mailto:dein.negativ@gmail.com\">Andrey Karlov</a><br/>")+
         tr("&nbsp;&nbsp;&nbsp; (main developer since version 0.4.10)<br/>")+
         QString("<br/>")+
-        QString("&nbsp; 2009-2013 <a href=\"mailto:dhamp@ya.ru\">Eugene Petrov</a><br/>")+
+        QString("&nbsp; 2009-2014 <a href=\"mailto:dhamp@ya.ru\">Eugene Petrov</a><br/>")+
         tr("&nbsp;&nbsp;&nbsp; (Arch Linux maintainer and developer since version 0.4.10)<br/>")+
         QString("<br/>")+
-        QString("&nbsp; 2010-2013 <a href=\"mailto:tehnick-8@mail.ru\">Boris Pek</a> aka Tehnick<br/>")+
+        QString("&nbsp; 2010-2014 <a href=\"mailto:tehnick-8@mail.ru\">Boris Pek</a> aka Tehnick<br/>")+
         tr("&nbsp;&nbsp;&nbsp; (Debian/Ubuntu maintainer and developer since version 1.89.0)<br/>")+
         QString("<br/>")+
-        QString("&nbsp; 2010-2013 <a href=\"mailto:pavelvat@gmail.com\">Pavel Vatagin</a><br/>")+
+        QString("&nbsp; 2010-2014 <a href=\"mailto:pavelvat@gmail.com\">Pavel Vatagin</a><br/>")+
         tr("&nbsp;&nbsp;&nbsp; (MS Windows maintainer and developer since version 2.2.4)<br/>")+
         QString("<br/>")+
-        QString("&nbsp; 2010-2013 <a href=\"mailto:tka4ev@gmail.com\">Alexandr Tkachev</a><br/>")+
+        QString("&nbsp; 2010-2014 <a href=\"mailto:tka4ev@gmail.com\">Alexandr Tkachev</a><br/>")+
         tr("&nbsp;&nbsp;&nbsp; (developer since version 2.0.3)<br/>")+
         QString("<br/>")+
         tr("<b>Graphic files</b><br/>")+
@@ -2698,31 +2723,38 @@ void MainWindow::slotAboutClient(){
         QString("<br/>")+
         tr("Russian translation<br/>")+
         QString("&nbsp;&nbsp;&nbsp; 2009-2010 <a href=\"mailto:wiselord1983@gmail.com\">Uladzimir Bely</a><br/>")+
-        QString("&nbsp;&nbsp;&nbsp; 2010-2013 <a href=\"mailto:tehnick-8@mail.ru\">Boris Pek</a> aka Tehnick<br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2010-2014 <a href=\"mailto:tehnick-8@mail.ru\">Boris Pek</a> aka Tehnick<br/>")+
         QString("<br/>")+
         tr("Belarusian translation<br/>")+
         QString("&nbsp;&nbsp;&nbsp; 2009-2013 <a href=\"mailto:i.kliok@gmail.com\">Paval Shalamitski</a> aka Klyok<br/>")+
         QString("<br/>")+
         tr("Hungarian translation<br/>")+
         QString("&nbsp;&nbsp;&nbsp; 2010-2012 <a href=\"mailto:husumo@gmail.com\">Akos Berki</a> aka sumo<br/>")+
-        QString("&nbsp;&nbsp;&nbsp; 2011-2013 <a href=\"mailto:marcus@elitemail.hu\">Márk Lutring</a><br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2011-2014 <a href=\"mailto:marcus@elitemail.hu\">Márk Lutring</a><br/>")+
         QString("<br/>")+
         tr("French translation<br/>")+
-        QString("&nbsp;&nbsp;&nbsp; 2010-2012 <a href=\"mailto:alexandre.wallimann@gmail.com\">Alexandre Wallimann</a> aka Ale<br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2010-2014 <a href=\"mailto:alexandre.wallimann@gmail.com\">Alexandre Wallimann</a> aka Jellyffs<br/>")+
         QString("<br/>")+
         tr("Polish translation<br/>")+
         QString("&nbsp;&nbsp;&nbsp; 2010-2012 <a href=\"mailto:arahael@gmail.com\">Arahael</a><br/>")+
         QString("<br/>")+
         tr("Ukrainian translation<br/>")+
         QString("&nbsp;&nbsp;&nbsp; 2010 <a href=\"mailto:dmytro.demenko@gmail.com\">Dmytro Demenko</a><br/>")+
-        QString("&nbsp;&nbsp;&nbsp; 2013 <a href=\"mailto:grayich@ukr.net\">gray</a> aka grayich<br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2013-2014 <a href=\"mailto:grayich@ukr.net\">gray</a> aka grayich<br/>")+
+        QString("<br/>")+
+        tr("Serbian (Cyrillic) translation<br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2014 <a href=\"mailto:trifunovic@openmailbox.org\">Marko Trifunović</a><br/>")+
         QString("<br/>")+
         tr("Serbian (Latin) translation<br/>")+
-        QString("&nbsp;&nbsp;&nbsp; 2010-2013 <a href=\"mailto:miroslav031@gmail.com\">Miroslav Petrovic</a><br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2010-2014 <a href=\"mailto:miroslav031@gmail.com\">Miroslav Petrovic</a><br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2014 <a href=\"mailto:trifunovic@openmailbox.org\">Marko Trifunović</a><br/>")+
         QString("<br/>")+
         tr("Spanish translation<br/>")+
-        QString("&nbsp;&nbsp;&nbsp; 2010-2013 <a href=\"mailto:sl1pkn07@gmail.com\">Gustavo Alvarez</a> aka sL1pKn07<br/>")+
-        QString("&nbsp;&nbsp;&nbsp; 2012 <a href=\"mailto:klondike at klondike.es\">Francisco Blas Izquierdo Riera</a> aka klondike<br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2010-2014 <a href=\"mailto:sl1pkn07@gmail.com\">Gustavo Alvarez</a> aka sL1pKn07<br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2012-2014 <a href=\"mailto:klondike at klondike.es\">Francisco Blas Izquierdo Riera</a> aka klondike<br/>")+
+        QString("<br/>")+
+        tr("Basque translation<br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2014-2015 <a href=\"mailto:egoitzro2@hotmail.com\">Egoitz Rodriguez</a><br/>")+
         QString("<br/>")+
         tr("Bulgarian translation<br/>")+
         QString("&nbsp;&nbsp;&nbsp; 2010-2012 <a href=\"mailto:dimitrov.rusi@gmail.com\">Rusi Dimitrov</a> aka PsyTrip<br/>")+
@@ -2736,7 +2768,7 @@ void MainWindow::slotAboutClient(){
         tr("German translation<br/>")+
         QString("&nbsp;&nbsp;&nbsp; 2011-2012 <a href=\"mailto:kgeorgokitsos@yahoo.de\">Konstantinos Georgokitsos</a><br/>")+
         QString("&nbsp;&nbsp;&nbsp; 2011-2012 <a href=\"mailto:tilkax@gmail.com\">Tillmann Karras</a><br/>")+
-        QString("&nbsp;&nbsp;&nbsp; 2012-2013 <a href=\"mailto:be.w@mail.ru\">Benjamin Weber</a><br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2012-2015 <a href=\"mailto:be.w@mail.ru\">Benjamin Weber</a><br/>")+
         QString("<br/>")+
         tr("Greek translation<br/>")+
         QString("&nbsp;&nbsp;&nbsp; 2011-2012 <a href=\"mailto:kgeorgokitsos@yahoo.de\">Konstantinos Georgokitsos</a><br/>")+
@@ -2746,10 +2778,16 @@ void MainWindow::slotAboutClient(){
         QString("&nbsp;&nbsp;&nbsp; 2012 <a href=\"mailto:lorenzo.keller@gmail.com\">Lorenzo Keller</a><br/>")+
         QString("<br/>")+
         tr("Portuguese (Brazil) translation<br/>")+
-        QString("&nbsp;&nbsp;&nbsp; 2013 <a href=\"mailto:heldercro@gmail.com\">Helder Cesar</a> aka redrum<br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2013-2015 <a href=\"mailto:heldercro@gmail.com\">Helder Cesar</a> aka redrum<br/>")+
         QString("<br/>")+
         tr("Vietnamese translation<br/>")+
         QString("&nbsp;&nbsp;&nbsp; 2013 <a href=\"mailto:ppanhh@gmail.com\">Anh Phan</a><br/>")+
+        QString("<br/>")+
+        tr("Chinese (China) translation<br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2013 <a href=\"mailto:syaomingl@gmail.com\">Syaoming Lai</a><br/>")+
+        QString("<br/>")+
+        tr("Swedish (Sweden) translation<br/>")+
+        QString("&nbsp;&nbsp;&nbsp; 2014 <a href=\"mailto:sopor@hotmail.com\">Sopor</a><br/>")+
         QString("<br/>")
         );
 
@@ -2819,8 +2857,8 @@ void MainWindow::slotUpdateFavHubMenu() {
 
     const FavoriteHubEntryList& fl = FavoriteManager::getInstance()->getFavoriteHubs();
 
-    for(auto i = fl.cbegin(); i != fl.cend(); ++i) {
-        const FavoriteHubEntry &entry = *(*i);
+    for (auto &i : fl) {
+        const FavoriteHubEntry &entry = *i;
 
         QString url = _q(entry.getServer());
         QString name = entry.getName().empty() ? tr("[No name]") : _q(entry.getName());
@@ -2958,18 +2996,18 @@ void MainWindow::slotShowSpeedLimits(){
         N->slotShowSpeedLimits();
 }
 
-void MainWindow::slotSupressTxt(){
+void MainWindow::slotSuppressTxt(){
     Notification *N = Notification::getInstance();
     QAction *act = qobject_cast<QAction*>(sender());
     if (N && act)
-        N->setSupressTxt(act->isChecked());
+        N->setSuppressTxt(act->isChecked());
 }
 
-void MainWindow::slotSupressSnd(){
+void MainWindow::slotSuppressSnd(){
     Notification *N = Notification::getInstance();
     QAction *act = qobject_cast<QAction*>(sender());
     if (N && act)
-        N->setSupressSnd(act->isChecked());
+        N->setSuppressSnd(act->isChecked());
 }
 
 #if defined(Q_WS_MAC)
@@ -2982,20 +3020,20 @@ void MainWindow::initDockMenuBar(){
     setup_speed_lim->setIcon(WICON(WulforUtil::eiSPEED_LIMIT_ON));
 
     QMenu *menuAdditional = new QMenu(tr("Additional"), this);
-    QAction *actSupressSnd = new QAction(tr("Supress sound notifications"), menuAdditional);
-    QAction *actSupressTxt = new QAction(tr("Supress text notifications"), menuAdditional);
+    QAction *actSuppressSnd = new QAction(tr("Suppress sound notifications"), menuAdditional);
+    QAction *actSuppressTxt = new QAction(tr("Suppress text notifications"), menuAdditional);
 
-    actSupressSnd->setCheckable(true);
-    actSupressSnd->setChecked(false);
+    actSuppressSnd->setCheckable(true);
+    actSuppressSnd->setChecked(false);
 
-    actSupressTxt->setCheckable(true);
-    actSupressTxt->setChecked(false);
+    actSuppressTxt->setCheckable(true);
+    actSuppressTxt->setChecked(false);
 
     connect(setup_speed_lim, SIGNAL(triggered()), this, SLOT(slotShowSpeedLimits()));
-    connect(actSupressTxt, SIGNAL(triggered()), this, SLOT(slotSupressTxt()));
-    connect(actSupressSnd, SIGNAL(triggered()), this, SLOT(slotSupressSnd()));
+    connect(actSuppressTxt, SIGNAL(triggered()), this, SLOT(slotSuppressTxt()));
+    connect(actSuppressSnd, SIGNAL(triggered()), this, SLOT(slotSuppressSnd()));
 
-    menuAdditional->addActions(QList<QAction*>() << actSupressTxt << actSupressSnd);
+    menuAdditional->addActions(QList<QAction*>() << actSuppressTxt << actSuppressSnd);
     menu->addAction(setup_speed_lim);
     menu->addMenu(menuAdditional);
 

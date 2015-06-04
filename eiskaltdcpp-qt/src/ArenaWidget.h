@@ -39,6 +39,7 @@ public:
         Spy,
         CustomWidget,
         QueuedUsers,
+        CmdDebug,
         NoRole  //Not valid for widgets
     };
 
@@ -97,7 +98,7 @@ Q_OBJECT
 Q_INTERFACES(ArenaWidget)
 
 public:
-    Q_ENUMS (ArenaWidget::Flags);
+//    Q_ENUMS (ArenaWidget::Flags);
 
     ScriptWidget();
     virtual ~ScriptWidget();

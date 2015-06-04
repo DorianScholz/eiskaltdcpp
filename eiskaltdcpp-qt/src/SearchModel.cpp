@@ -6,8 +6,12 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-
+#if QT_VERSION >= 0x050000
+#include <QtWidgets>
+#else
 #include <QtGui>
+#endif
+
 #include <QFileInfo>
 #include <QList>
 #include <QStringList>
@@ -226,21 +230,21 @@ namespace {
 template <Qt::SortOrder order>
 struct Compare {
     typedef bool (*AttrComp)(const SearchItem * l, const SearchItem * r);
-    
+
     void static sort(unsigned column, QList<SearchItem*>& items) {
         if (column > COLUMN_SF_HOST)
             return;
-        
+
         qStableSort(items.begin(), items.end(), attrs[column]);
     }
 
     QList<SearchItem*>::iterator static insertSorted(unsigned column, QList<SearchItem*>& items, SearchItem* item) {
         if (column > COLUMN_SF_HOST)
             return items.end();
-        
-        return qLowerBound(items.begin(), 
-                           items.end(), 
-                           item, 
+
+        return qLowerBound(items.begin(),
+                           items.end(),
+                           item,
                            attrs[column]
                           );
     }
@@ -260,7 +264,7 @@ struct Compare {
         }
         template <typename T>
         bool static Cmp(const T& l, const T& r);
-        
+
         static AttrComp attrs[13];
 };
 
@@ -456,6 +460,11 @@ void SearchModel::clearModel(){
     reset();
 }
 
+void SearchModel::reset() {
+    beginResetModel();
+    endResetModel();
+}
+
 void SearchModel::removeItem(const SearchItem *item){
     if (!okToFind(item))
         return;
@@ -488,7 +497,7 @@ bool SearchModel::okToFind(const SearchItem *item){
 
         SearchItem *tth_root = tths.value(tth);//try to find item by tth
 
-        foreach (SearchItem *i, tth_root->childItems){
+        for (const auto &i : tth_root->childItems){
             if (item == i)
                 return true;
         }
@@ -551,7 +560,7 @@ bool SearchItem::exists(const QString &user_cid) const {
     if (childItems.isEmpty())
         return cid == user_cid;
 
-    foreach(SearchItem *child, childItems) {
+    for (const auto &child : childItems) {
         if (child->cid == user_cid)
             return true;
     }

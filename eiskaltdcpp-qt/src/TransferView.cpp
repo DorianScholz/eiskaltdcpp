@@ -38,7 +38,7 @@
 #include <QFileInfo>
 #include <QDir>
 
-TransferView::Menu::Menu():
+TransferView::Menu::Menu(bool showTransferedFilesOnly):
         menu(NULL),
         selectedColumn(0)
 {
@@ -73,7 +73,7 @@ TransferView::Menu::Menu():
     copy_column->addAction(tr("Size"));
     copy_column->addAction(tr("Time left"));
     copy_column->addAction(tr("Filename"));
-    copy_column->addAction(tr("Host"));
+    copy_column->addAction(tr("Hub"));
     copy_column->addAction(tr("IP"));
     copy_column->addAction(tr("Encryption"));
     copy_column->addAction(tr("Magnet"));
@@ -93,6 +93,10 @@ TransferView::Menu::Menu():
     QAction *close = new QAction(tr("Close connection(s)"), menu);
     close->setIcon(WU->getPixmap(WulforUtil::eiCONNECT_NO));
 
+    QAction *show_only_transfered_files = new QAction(tr("Show only transfered files"), menu);
+    show_only_transfered_files->setCheckable(true);
+    show_only_transfered_files->setChecked(showTransferedFilesOnly);
+
     actions.insert(browse, Browse);
     actions.insert(match, MatchQueue);
     actions.insert(send_pm, SendPM);
@@ -102,6 +106,7 @@ TransferView::Menu::Menu():
     actions.insert(force, Force);
     actions.insert(close, Close);
     actions.insert(search, SearchAlternates);
+    actions.insert(show_only_transfered_files, showTransferedFieldsOnly);
 
     menu->addActions(QList<QAction*>() << browse
                                        << search
@@ -115,6 +120,7 @@ TransferView::Menu::Menu():
                                        << sep3
                                        << force
                                        << close
+                                       << show_only_transfered_files
                                        );
 }
 
@@ -191,7 +197,7 @@ void TransferView::load(){
     if (h >= 0)
         resize(this->width(), h);
 
-    treeView_TRANSFERS->header()->restoreState(QByteArray::fromBase64(WSGET(WS_TRANSFERS_STATE).toAscii()));
+    treeView_TRANSFERS->header()->restoreState(QByteArray::fromBase64(WSGET(WS_TRANSFERS_STATE).toUtf8()));
 }
 
 QSize TransferView::sizeHint() const{
@@ -423,7 +429,7 @@ void TransferView::slotContextMenu(const QPoint &){
         return;
 
     Menu::Action act;
-    Menu m;
+    Menu m(model->getShowTranferedFilesOnlyState());
 
     act = m.exec();
 
@@ -435,11 +441,11 @@ void TransferView::slotContextMenu(const QPoint &){
 
     QList<TransferViewItem*> items;
 
-    foreach (const QModelIndex &index, list){
+    for (const auto &index : list){
         TransferViewItem *i = reinterpret_cast<TransferViewItem*>(index.internalPointer());
 
         if (i->childCount() > 0){
-            foreach(TransferViewItem *child, i->childItems)
+            for (const auto &child : i->childItems)
                 items.append(child);
         }
         else if (!items.contains(i))
@@ -457,7 +463,7 @@ void TransferView::slotContextMenu(const QPoint &){
     }
     case Menu::Browse:
     {
-        foreach(TransferViewItem *i, items)
+        for (const auto &i : items)
             getFileList(i->cid, vstr(i->data(COLUMN_TRANSFER_HOST)));
 
         break;
@@ -466,35 +472,33 @@ void TransferView::slotContextMenu(const QPoint &){
     {
         QStringList tths;
         QString tth_str = "";
-        std::for_each(items.begin(), items.end(), 
-                      [&](const TransferViewItem *item) {
-                          tth_str = getTTHFromItem(item);
-                          if (!tth_str.isEmpty() && !tths.contains(tth_str)){
-                            tths.push_back(tth_str);
-                            searchAlternates(tth_str);
-                          }
-                      }
-                     );
+        for (const auto &item : items) {
+            tth_str = getTTHFromItem(item);
+            if (!tth_str.isEmpty() && !tths.contains(tth_str)){
+                tths.push_back(tth_str);
+                searchAlternates(tth_str);
+            }
+        }
 
         break;
     }
     case Menu::MatchQueue:
     {
-        foreach(TransferViewItem *i, items)
+        for (const auto &i : items)
             matchQueue(i->cid, vstr(i->data(COLUMN_TRANSFER_HOST)));
 
         break;
     }
     case Menu::AddToFav:
     {
-        foreach(TransferViewItem *i, items)
+        for (const auto &i : items)
             addFavorite(i->cid);
 
         break;
     }
     case Menu::GrantExtraSlot:
     {
-        foreach(TransferViewItem *i, items)
+        for (const auto &i : items)
             grantSlot(i->cid, vstr(i->data(COLUMN_TRANSFER_HOST)));
 
         break;
@@ -505,12 +509,12 @@ void TransferView::slotContextMenu(const QPoint &){
         QString data = "";
 
         if (col <= (model->columnCount()-1)){
-            foreach(TransferViewItem *i, items)
+            for (const auto &i : items)
                 data += i->data(col).toString() + "\n";
         }
         else {
             QString tth_str = "";
-            foreach(TransferViewItem *i, items){
+            for (const auto &i : items){
                 QFileInfo fi(i->target);
                 tth_str = getTTHFromItem(i);
 
@@ -534,21 +538,26 @@ void TransferView::slotContextMenu(const QPoint &){
     }
     case Menu::RemoveFromQueue:
     {
-        foreach(TransferViewItem *i, items)
+        for (const auto &i : items)
             removeFromQueue(i->cid);
 
         break;
     }
     case Menu::Force:
     {
-        foreach(TransferViewItem *i, items)
+        for (const auto &i : items)
             forceAttempt(i->cid);
 
         break;
     }
+    case Menu::showTransferedFieldsOnly:
+    {
+        model->setShowTranferedFilesOnlyState(!model->getShowTranferedFilesOnlyState());
+        break;
+    }
     case Menu::Close:
     {
-        foreach(TransferViewItem *i, items)
+        for (const auto &i : items)
             closeConection(i->cid, i->download);
 
         break;
@@ -557,7 +566,7 @@ void TransferView::slotContextMenu(const QPoint &){
     {
         HubFrame *fr = NULL;
 
-        foreach(TransferViewItem *i, items){
+        for (const auto &i : items){
             dcpp::CID cid(_tq(i->cid));
             QString hubUrl = i->data(COLUMN_TRANSFER_HOST).toString();
 
@@ -610,8 +619,8 @@ void TransferView::on(dcpp::DownloadManagerListener::Starting, dcpp::Download* d
 }
 
 void TransferView::on(dcpp::DownloadManagerListener::Tick, const dcpp::DownloadList& dls) noexcept{
-    for (auto it = dls.begin(); it != dls.end(); ++it){
-        Download* dl = *it;
+    for (const auto &it : dls){
+        Download* dl = it;
         VarMap params;
         QString str;
 
@@ -789,8 +798,8 @@ void TransferView::on(dcpp::UploadManagerListener::Starting, dcpp::Upload* ul) n
 }
 
 void TransferView::on(dcpp::UploadManagerListener::Tick, const dcpp::UploadList& uls) noexcept{
-    for (auto it = uls.begin(); it != uls.end(); ++it){
-        Upload* ul = *it;
+    for (const auto &it : uls){
+        Upload* ul = it;
         VarMap params;
         QString stat = "";
 

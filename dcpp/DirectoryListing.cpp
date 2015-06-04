@@ -149,6 +149,7 @@ static const string sWH = "WH";
 static const string sMVideo = "MV";
 static const string sMAudio = "MA";
 static const string sTS = "TS";
+static const string sHIT = "HIT";
 
 void ListLoader::startTag(const string& name, StringPairList& attribs, bool simple) {
     if(inListing) {
@@ -193,6 +194,8 @@ void ListLoader::startTag(const string& name, StringPairList& attribs, bool simp
             }
 
             if (!l_ts.empty()){
+                f->setTS(atol(l_ts.c_str()));
+                f->setHit(atol(getAttrib(attribs, sHIT, 3).c_str()));
                 f->mediaInfo.video_info = getAttrib(attribs, sMVideo, 3);
                 f->mediaInfo.audio_info = getAttrib(attribs, sMAudio, 3);
                 f->mediaInfo.resolution = getAttrib(attribs, sWH, 3);
@@ -331,7 +334,7 @@ void DirectoryListing::download(const string& aDir, const string& aTarget, bool 
     dcassert(aDir.size() > 2);
     dcassert(aDir[aDir.size() - 1] == '\\'); // This should not be PATH_SEPARATOR
     Directory* d = find(aDir, getRoot());
-    if(d != NULL)
+    if(d)
         download(d, aTarget, highPrio);
 }
 

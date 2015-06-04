@@ -48,7 +48,7 @@ const string SettingsManager::settingTags[] =
     "TimeStampsFormat", "CID", "LogFileMainChat", "LogFilePrivateChat",
     "LogFileStatus", "LogFileUpload", "LogFileDownload", "LogFileFinishedDownload",
     "LogFileSystem",
-    "LogFormatSystem", "LogFormatStatus", "TLSPrivateKeyFile",
+    "LogFormatSystem", "LogFormatStatus", "LogFileSpy", "LogFormatSpy", "TLSPrivateKeyFile",
     "TLSCertificateFile", "TLSTrustedCertificatesPath",
     "Language", "SkipListShare", "InternetIp", "BindIfaceName",
     "DHTKey", "DynDNSServer", "MimeHandler",
@@ -96,7 +96,8 @@ const string SettingsManager::settingTags[] =
     "IpFilter", "TextColor", "UseLua", "AllowNatt", "IpTOSValue", "SegmentSize",
     "BindIface", "MinimumSearchInterval", "EnableDynDNS", "AllowUploadOverMultiHubs",
     "UseADLOnlyOnOwnList", "AllowSimUploads", "CheckTargetsPathsOnStart", "NmdcDebug",
-    "ShareSkipZeroByte",
+    "ShareSkipZeroByte", "RequireTLS", "LogSpy", "AppUnitBase",
+    "SENTRY",
     // Int64
     "TotalUpload", "TotalDownload",
     "SENTRY",
@@ -159,14 +160,8 @@ SettingsManager::SettingsManager()
     setDefault(LIST_DUPES, true);
     setDefault(BUFFER_SIZE, 64);
     setDefault(HUBLIST_SERVERS,
-               "http://hublist.openhublist.org/hublist.xml.bz2;"
                "http://dchublist.com/hublist.xml.bz2;"
-               "http://adchublist.com/hublist.xml.bz2;"
-               "http://www.hublist.org/PublicHubList.xml.bz2;"
-               "http://dclist.eu/hublist.xml.bz2;"
-               "http://download.hublist.cz/hublist.xml.bz2;"
-               "http://hublist.awenet.info/PublicHubList.xml.bz2;"
-               "http://www.hublista.hu/hublist.xml.bz2"
+               "http://dchublist.ru/hublist.xml.bz2"
                );
     setDefault(DOWNLOAD_SLOTS, 3);
     setDefault(SKIPLIST_SHARE, "*.~*|*.*~");
@@ -177,6 +172,7 @@ SettingsManager::SettingsManager()
     setDefault(LOG_FINISHED_DOWNLOADS, false);
     setDefault(LOG_PRIVATE_CHAT, false);
     setDefault(LOG_MAIN_CHAT, false);
+    setDefault(LOG_SPY, false);
     setDefault(UPLOAD_SPEED, connectionSpeeds[11]);
     setDefault(MIN_UPLOAD_SPEED, 0);
     setDefault(LOG_FORMAT_POST_DOWNLOAD, "[%Y-%m-%d %H:%M:%S] %[target] downloaded from %[userNI] (%[userCID]), %[fileSI] (%[fileSIchunk]), %[speed], %[time], %[fileTR]");
@@ -186,6 +182,7 @@ SettingsManager::SettingsManager()
     setDefault(LOG_FORMAT_PRIVATE_CHAT,  "[%Y-%m-%d %H:%M:%S] %[message]");
     setDefault(LOG_FORMAT_STATUS,        "[%Y-%m-%d %H:%M:%S] %[message]");
     setDefault(LOG_FORMAT_SYSTEM,        "[%Y-%m-%d %H:%M:%S] %[message]");
+    setDefault(LOG_FORMAT_SPY,        "[%Y-%m-%d %H:%M:%S] %[message] (%[count])");
     setDefault(LOG_FILE_MAIN_CHAT,    "CHAT/%B - %Y/%[hubNI] (%[hubURL]).log");
     setDefault(LOG_FILE_STATUS,       "STATUS/%B - %Y/%[hubNI] (%[hubURL]).log");
     setDefault(LOG_FILE_PRIVATE_CHAT, "PM/%B - %Y/%[userNI] (%[userCID]).log");
@@ -193,6 +190,7 @@ SettingsManager::SettingsManager()
     setDefault(LOG_FILE_DOWNLOAD,     "Downloads.log");
     setDefault(LOG_FILE_FINISHED_DOWNLOAD, "Finished_downloads.log");
     setDefault(LOG_FILE_SYSTEM,       "System.log");
+    setDefault(LOG_FILE_SPY,       "Spy.log");
     setDefault(AUTO_AWAY, false);
     setDefault(BIND_ADDRESS, "0.0.0.0");
     setDefault(SOCKS_PORT, 1080);
@@ -222,7 +220,7 @@ SettingsManager::SettingsManager()
     setDefault(ADC_DEBUG, false);
     setDefault(SEARCH_HISTORY, 10);
     setDefault(SET_MINISLOT_SIZE, 64);
-    setDefault(MAX_FILELIST_SIZE, 512);
+    setDefault(MAX_FILELIST_SIZE, 4*1024);
     setDefault(PRIO_HIGHEST_SIZE, 64);
     setDefault(PRIO_HIGH_SIZE, 0);
     setDefault(PRIO_NORMAL_SIZE, 0);
@@ -304,6 +302,7 @@ SettingsManager::SettingsManager()
     setDefault(ALLOW_SIM_UPLOADS, true);
     setDefault(CHECK_TARGETS_PATHS_ON_START, false);
     setDefault(SHARE_SKIP_ZERO_BYTE, false);
+    setDefault(APP_UNIT_BASE, 0);
     setSearchTypeDefaults();
 }
 
@@ -597,28 +596,41 @@ bool SettingsManager::getType(const char* name, int& n, int& type) const {
 
 const std::string SettingsManager::parseCoreCmd(const std::string& cmd) {
     StringTokenizer<string> sl(cmd, ' ');
-    if (sl.getTokens().size() == 1 || sl.getTokens().size() == 2) {
-        int n,type; string tmp;
-        getType(sl.getTokens().at(0).c_str(),n,type);
-        if (type == SettingsManager::TYPE_INT) {
-            if (sl.getTokens().size() == 2) {
-                int i = atoi(sl.getTokens().at(1).c_str());
-                set((SettingsManager::IntSetting)n,i);
-            } else if (sl.getTokens().size() == 1)
-                tmp = Util::toString(get((SettingsManager::IntSetting)n,false));
-        }
-        else if (type == SettingsManager::TYPE_STRING) {
-            if (sl.getTokens().size() == 2)
-                set((SettingsManager::StrSetting)n, sl.getTokens().at(1));
-            else if (sl.getTokens().size() == 1)
-                tmp = get((SettingsManager::StrSetting)n,false);
-         } else
-            return _("Error: setting not found!");
-        return !tmp.empty() ?
-        _("Core setting ") + string(sl.getTokens().at(0)) + ": " + tmp :
-        _("Change core setting ") + string(sl.getTokens().at(0)) + _(" to ") + string(sl.getTokens().at(1));
+    if (sl.getTokens().size() == 1) {
+        string ret;
+        bool b = parseCoreCmd(ret, sl.getTokens().at(0), Util::emptyString);
+        return (!b ? _("Error: setting not found!") : _("Core setting ") + sl.getTokens().at(0) + ": " + ret);
+    } else if (sl.getTokens().size() >= 2) {
+        string tmp = cmd.substr(sl.getTokens().at(0).size()+1);
+        string ret;
+        bool b = parseCoreCmd(ret, sl.getTokens().at(0), tmp);
+        return (!b ? _("Error: setting not found!") : _("Change core setting ") + sl.getTokens().at(0) + _(" to ") + tmp);
     }
-    return _("Error: segv parser :D");
+    return Util::emptyString;
+}
+
+bool SettingsManager::parseCoreCmd(string& ret, const std::string& key, const string& value) {
+    if (key.empty()) {
+        return false;
+    }
+
+    int n,type;
+    getType(key.c_str(),n,type);
+    if (type == SettingsManager::TYPE_INT) {
+        if (!value.empty()) {
+            int i = atoi(value.c_str());
+            set((SettingsManager::IntSetting)n,i);
+        } else if (value.empty())
+            ret = Util::toString(get((SettingsManager::IntSetting)n,false));
+    }
+    else if (type == SettingsManager::TYPE_STRING) {
+        if (!value.empty())
+            set((SettingsManager::StrSetting)n, value);
+        else if (value.empty())
+            ret = get((SettingsManager::StrSetting)n,false);
+    } else
+        return false;
+    return true;
 }
 
 } // namespace dcpp

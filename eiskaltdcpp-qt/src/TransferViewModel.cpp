@@ -11,7 +11,12 @@
 
 #include "WulforUtil.h"
 
+#if QT_VERSION >= 0x050000
+#include <QtWidgets>
+#else
 #include <QtGui>
+#endif
+
 #include <QFileInfo>
 #include <QList>
 #include <QStringList>
@@ -26,7 +31,7 @@
 #include <QSize>
 #include <QStyleOptionProgressBar>
 #include <QHash>
-#include <QColorGroup>
+//#include <QColorGroup>
 
 #include "dcpp/stdinc.h"
 #include "dcpp/ShareManager.h"
@@ -41,7 +46,7 @@
 #include <set>
 
 TransferViewModel::TransferViewModel(QObject *parent)
-    : QAbstractItemModel(parent), iconsScaled(false)
+    : QAbstractItemModel(parent), iconsScaled(false), showTranferedFilesOnly(false)
 {
     QList<QVariant> rootData;
     rootData << tr("Users") << tr("Speed") << tr("Status") << tr("Flags") << tr("Size")
@@ -102,8 +107,8 @@ QVariant TransferViewModel::data(const QModelIndex &index, int role) const
         case Qt::DisplayRole:
         {
             if (item->download && index.column() != COLUMN_TRANSFER_SIZE && item->childCount() == 1)//This parent item has hidden child, so just copy child column text into parent
-				return data(createIndex(0, index.column(), reinterpret_cast<void*>(item->childItems.first())), role);
-			
+                                return data(createIndex(0, index.column(), reinterpret_cast<void*>(item->childItems.first())), role);
+
             if (index.column() == COLUMN_TRANSFER_SPEED)
                 return WulforUtil::formatBytes(item->data(COLUMN_TRANSFER_SPEED).toDouble()) + tr("/s");
             else if (index.column() == COLUMN_TRANSFER_SIZE)
@@ -170,7 +175,7 @@ struct Compare {
        }
         template <typename T>
         bool static Cmp(const T& l, const T& r);
-        
+
         static AttrComp attrs[10];
 };
 template <Qt::SortOrder order>
@@ -355,6 +360,13 @@ void TransferViewModel::addConnection(const VarMap &params){
 
     transfer_hash.insertMulti(item->cid, item);
 
+    if (showTranferedFilesOnly){
+        if (vstr(params["FNAME"]).isEmpty() || (tr("File list") == params["FNAME"]) ){
+            return;
+        };
+    };
+
+
     if (!to)
         rootItem->appendChild(item);
     else
@@ -386,7 +398,16 @@ void TransferViewModel::updateTransfer(const VarMap &params){
     item->fail = vbol(params["FAIL"]);
     item->tth = vstr(params["TTH"]);
 
+
+
     if (!vbol(params["DOWN"])){
+
+        if (showTranferedFilesOnly){
+            if (vstr(params["FNAME"]).isEmpty() || (tr("File list") == params["FNAME"]) ){
+                return;
+            };
+        };
+
         if (!rootItem->childItems.contains(item))
             rootItem->appendChild(item);
     }
@@ -455,7 +476,7 @@ bool TransferViewModel::findParent(const QString &target, TransferViewItem **ite
     if (!item)
         return false;
 
-    foreach (TransferViewItem *i, rootItem->childItems){
+    for (const auto &i : rootItem->childItems){
         if ((i->download == download) && i->target == target && i->cid.isEmpty()){
             *item = i;
 
@@ -505,11 +526,19 @@ void TransferViewModel::moveTransfer(TransferViewItem *item, TransferViewItem *f
 }
 
 void TransferViewModel::updateParents(){
-    foreach(TransferViewItem *i, rootItem->childItems)
+    for (const auto &i : rootItem->childItems)
         updateParent(i);
 
     emit layoutChanged();
 }
+
+void TransferViewModel::setShowTranferedFilesOnlyState(bool state){
+    showTranferedFilesOnly = state;
+};
+
+bool TransferViewModel::getShowTranferedFilesOnlyState(){
+    return showTranferedFilesOnly;
+};
 
 void TransferViewModel::updateParent(TransferViewItem *p){
     if (!p || p->childCount() < 1 || p == rootItem)
@@ -525,7 +554,7 @@ void TransferViewModel::updateParent(TransferViewItem *p){
 
     totalSize = vlng(p->data(COLUMN_TRANSFER_SIZE));
 
-    foreach (TransferViewItem *i, p->childItems){
+    for (const auto &i : p->childItems){
         if (!i->fail){
             active++;
             speed += vdbl(i->data(COLUMN_TRANSFER_SPEED));
@@ -554,7 +583,7 @@ void TransferViewModel::updateParent(TransferViewItem *p){
                    + QString(" (%1%)").arg(progress, 0, 'f', 1);
 
     QString hubs_str;
-    foreach(const QString &s, hubs)
+    for (const QString &s : hubs)
         hubs_str += s + " ";
 
     if (vstr(p->data(COLUMN_TRANSFER_FNAME)).startsWith(tr("TTH: "))){
@@ -607,7 +636,7 @@ void TransferViewModel::finishParent(const VarMap &params){
     p->finished = true;
     p->updateColumn(COLUMN_TRANSFER_SPEED, qlonglong(0));
 
-    foreach (TransferViewItem *i, p->childItems){
+    for (const auto &i : p->childItems){
         i->updateColumn(COLUMN_TRANSFER_STATS, tr("Finished"));
         i->percent = 100.0;
         i->finished = true;

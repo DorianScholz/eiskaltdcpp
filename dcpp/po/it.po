@@ -3,14 +3,17 @@
 # This file is distributed under the same license as the PACKAGE package.
 #
 # Translators:
+# Translators:
+# Translators:
 # lokeller <lorenzo.keller@gmail.com>, 2012
-# Stefano Simoncelli <netcelli@gmail.com>, 2011-2012
+# lokeller <lorenzo.keller@gmail.com>, 2012
+# Stefano <netcelli@gmail.com>, 2011-2012
 msgid ""
 msgstr ""
 "Project-Id-Version: EiskaltDC++\n"
 "Report-Msgid-Bugs-To: http://code.google.com/p/eiskaltdc/issues/list\n"
-"POT-Creation-Date: 2013-08-29 22:51+0300\n"
-"PO-Revision-Date: 2013-08-29 20:12+0000\n"
+"POT-Creation-Date: 2015-05-24 21:44+0300\n"
+"PO-Revision-Date: 2013-11-19 16:45+0000\n"
 "Last-Translator: Boris Pek <tehnick-8@yandex.ru>\n"
 "Language-Team: Italian (http://www.transifex.com/projects/p/eiskaltdcpp/"
 "language/it/)\n"
@@ -60,15 +63,15 @@ msgstr "TTh"
 msgid "CD Image"
 msgstr "Immagine CD"
 
-#: ../SearchManager.cpp:146
+#: ../SearchManager.cpp:149
 msgid "Search enabled again"
 msgstr "Ricerca riabilitata"
 
-#: ../SearchManager.cpp:154
+#: ../SearchManager.cpp:157
 msgid "Search disabled: %1%"
 msgstr "Ricerca disabilitata: %1%"
 
-#: ../SearchManager.cpp:278 ../SearchManager.cpp:365 ../SearchManager.cpp:367
+#: ../SearchManager.cpp:281 ../SearchManager.cpp:368 ../SearchManager.cpp:370
 #: ../Transfer.cpp:81 ../Transfer.cpp:85 ../QueueManager.cpp:2171
 #: ../QueueManager.cpp:2177 ../QueueManager.cpp:2183 ../ClientManager.cpp:178
 msgid "Offline"
@@ -102,18 +105,18 @@ msgstr "Impossibile leggere il file dei dati di indicizzazione"
 msgid "Error creating hash data file: %1%"
 msgstr "Impossibile leggere il file dei dati di indicizzazione"
 
-#: ../HashManager.cpp:946
+#: ../HashManager.cpp:958
 msgid "Hash database rebuilt"
 msgstr "Database indicizzazione ricostruito"
 
-#: ../HashManager.cpp:1040
+#: ../HashManager.cpp:1052
 msgid ""
 "%1% not shared; calculated CRC32 does not match the one found in SFV file."
 msgstr ""
 "%1% non condiviso; la CRC32 calcolata non corrisponde a quella trovata nel "
 "file SFV."
 
-#: ../HashManager.cpp:1045
+#: ../HashManager.cpp:1057
 msgid "Error hashing %1%: %2%"
 msgstr "Errore indicizzazione %1%: %2%"
 
@@ -184,7 +187,7 @@ msgstr "Connessione chiusa"
 msgid "Maximum command length exceeded"
 msgstr "La lunghezza massima del commando è stata superata"
 
-#: ../BufferedSocket.cpp:452
+#: ../BufferedSocket.cpp:456
 msgid "Disconnected"
 msgstr "Disconnesso"
 
@@ -200,11 +203,11 @@ msgstr "Impossibile inviare il file %1%: %2%"
 msgid "IPFilter: Blocked incoming connection to "
 msgstr "IPFilter: Bloccata connessione entrante verso"
 
-#: ../UploadManager.cpp:618
+#: ../UploadManager.cpp:625
 msgid "Disconnected user leaving the hub: %1%"
 msgstr "Disconnetti l'utente che lascia l'hub: %1%"
 
-#: ../DirectoryListing.cpp:206
+#: ../DirectoryListing.cpp:209
 msgid "Directory missing name attribute"
 msgstr "La cartella non ha il come come attributo"
 
@@ -342,21 +345,13 @@ msgstr "Rediretta utente(i)"
 msgid "Auto-connect group (converted)"
 msgstr "Auto-connect group (converted)"
 
-#: ../NmdcHub.cpp:288
+#: ../NmdcHub.cpp:295
 msgid "%1% (Nick unknown)"
 msgstr "%1% (Nick sconosciuto)"
 
-#: ../NmdcHub.cpp:667
+#: ../NmdcHub.cpp:672
 msgid "Hub topic:"
 msgstr "Argomento hub:"
-
-#: ../NmdcHub.cpp:1017
-msgid ""
-"This hub is trying to use your client to spam %1%, please urge hub owner to "
-"fix this"
-msgstr ""
-"L'hub stà tentando di utilizzare il tuo client per inviare il messaggio spam "
-"%1%, segnalalo al proprietario dell'hub per correggere il problema"
 
 #: ../ConnectionManager.cpp:179
 msgid "All download slots taken"
@@ -454,39 +449,39 @@ msgstr "Annulla"
 msgid "SSL Error: %1% (%2%, %3%)"
 msgstr "Errore SSL: %1% (%2%, %3%)"
 
-#: ../DownloadManager.cpp:134
+#: ../DownloadManager.cpp:135
 msgid "IPFilter: Blocked outgoing connection to "
 msgstr "IPFilter: Bloccata connessione in uscita verso"
 
-#: ../DownloadManager.cpp:229
+#: ../DownloadManager.cpp:237
 msgid "Invalid size"
 msgstr "Dimensione non valida"
 
-#: ../DownloadManager.cpp:234
+#: ../DownloadManager.cpp:242
 msgid "Response does not match request"
 msgstr "La risposta non corrisponde alla richiesta"
 
-#: ../DownloadManager.cpp:241
+#: ../DownloadManager.cpp:249
 msgid "Could not open target file: %1%"
 msgstr "Impossibile aprire il file di destinazione: %1%"
 
-#: ../DownloadManager.cpp:320
+#: ../DownloadManager.cpp:328
 msgid "Full tree does not match TTH root"
 msgstr "L'albero completo non corrisponde alla TTH della radice"
 
-#: ../DownloadManager.cpp:385
+#: ../DownloadManager.cpp:393
 msgid "No slots available"
 msgstr "Nessun slot disponibile"
 
-#: ../DownloadManager.cpp:496
+#: ../DownloadManager.cpp:504
 msgid "%1%: File not available"
 msgstr "File non disponibile"
 
-#: ../UserConnection.cpp:52 ../UserConnection.cpp:66 ../UserConnection.cpp:140
+#: ../UserConnection.cpp:53 ../UserConnection.cpp:68 ../UserConnection.cpp:145
 msgid "Invalid data"
 msgstr "Dimensione non valida"
 
-#: ../UserConnection.cpp:58
+#: ../UserConnection.cpp:59
 msgid "Non-UTF-8 data in an ADC connection"
 msgstr "Dati non in UTF-8 in una connessione ADC"
 
@@ -510,42 +505,67 @@ msgstr "Coda download"
 msgid "Users"
 msgstr "Utenti"
 
-#: ../Util.cpp:641
+#: ../Util.cpp:654
 #, c-format
 msgid "%d B"
 msgstr "%d B"
 
-#: ../Util.cpp:643
+#: ../Util.cpp:656
 #, c-format
 msgid "%.02f KiB"
 msgstr "%.02f KiB"
 
-#: ../Util.cpp:645
+#: ../Util.cpp:656
+#, fuzzy, c-format
+msgid "%.02f KB"
+msgstr "%.02f KiB"
+
+#: ../Util.cpp:658
 #, c-format
 msgid "%.02f MiB"
 msgstr "%.02f MiB"
 
-#: ../Util.cpp:647
+#: ../Util.cpp:658
+#, fuzzy, c-format
+msgid "%.02f MB"
+msgstr "%.02f MiB"
+
+#: ../Util.cpp:660
 #, c-format
 msgid "%.02f GiB"
 msgstr "%.02f GiB"
 
-#: ../Util.cpp:649
+#: ../Util.cpp:660
+#, fuzzy, c-format
+msgid "%.02f GB"
+msgstr "%.02f GiB"
+
+#: ../Util.cpp:662
 #, c-format
 msgid "%.02f TiB"
 msgstr "%.02f TiB"
 
-#: ../Util.cpp:651
+#: ../Util.cpp:662
+#, fuzzy, c-format
+msgid "%.02f TB"
+msgstr "%.02f TiB"
+
+#: ../Util.cpp:664
 #, c-format
 msgid "%.02f PiB"
 msgstr "%.02f PiB"
 
-#: ../Util.cpp:681
+#: ../Util.cpp:664
+#, fuzzy, c-format
+msgid "%.02f PB"
+msgstr "%.02f PiB"
+
+#: ../Util.cpp:698
 #, c-format
 msgid "%s B"
 msgstr "%s B"
 
-#: ../Util.cpp:685
+#: ../Util.cpp:702
 #, c-format
 msgid "%'lld B"
 msgstr "%'lld B"
@@ -610,41 +630,37 @@ msgstr "Aggiornamento lista file terminato"
 msgid "File list %1% generated"
 msgstr "Inizio aggiornamento lista file"
 
-#: ../SettingsManager.cpp:183
+#: ../SettingsManager.cpp:179
 msgid "downloaded from"
 msgstr "scaricato da"
 
-#: ../SettingsManager.cpp:517
+#: ../SettingsManager.cpp:516
 msgid "Invalid search type name"
 msgstr "Nome del tipo di ricerca non valido"
 
-#: ../SettingsManager.cpp:521 ../SettingsManager.cpp:543
+#: ../SettingsManager.cpp:520 ../SettingsManager.cpp:542
 msgid "This search type already exists"
 msgstr "Il tipo di ricerca esiste già"
 
-#: ../SettingsManager.cpp:575
+#: ../SettingsManager.cpp:574
 msgid "No such search type"
 msgstr "Tipo di ricerca non esistente"
 
-#: ../SettingsManager.cpp:616
+#: ../SettingsManager.cpp:602 ../SettingsManager.cpp:607
 msgid "Error: setting not found!"
 msgstr "Errore: impostazioni non trovate!"
 
-#: ../SettingsManager.cpp:618
+#: ../SettingsManager.cpp:602
 msgid "Core setting "
 msgstr ""
 
-#: ../SettingsManager.cpp:619
+#: ../SettingsManager.cpp:607
 msgid "Change core setting "
 msgstr "Cabmia le impostazioni del core"
 
-#: ../SettingsManager.cpp:619
+#: ../SettingsManager.cpp:607
 msgid " to "
 msgstr " a "
-
-#: ../SettingsManager.cpp:621
-msgid "Error: segv parser :D"
-msgstr ""
 
 #: ../Socket.cpp:86
 #, c-format
@@ -721,3 +737,10 @@ msgstr "Sono stati scritti più byte di quelli richiesti"
 #: ../MerkleCheckOutputStream.h:52 ../MerkleCheckOutputStream.h:112
 msgid "TTH inconsistency"
 msgstr "Inconsistenza TTH"
+
+#~ msgid ""
+#~ "This hub is trying to use your client to spam %1%, please urge hub owner "
+#~ "to fix this"
+#~ msgstr ""
+#~ "L'hub stà tentando di utilizzare il tuo client per inviare il messaggio "
+#~ "spam %1%, segnalalo al proprietario dell'hub per correggere il problema"

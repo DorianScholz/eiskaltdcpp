@@ -38,10 +38,16 @@
 #include <QClipboard>
 #include <QHeaderView>
 #include <QKeyEvent>
-#include <QtConcurrentFilter>
-#include <QtConcurrentRun>
 #include <QInputDialog>
 #include <QDesktopServices>
+#include <QDateTime>
+
+#if QT_VERSION >= 0x050000
+#include <QtConcurrent>
+#else
+#include <QtConcurrentFilter>
+#include <QtConcurrentRun>
+#endif
 
 using namespace dcpp;
 
@@ -131,8 +137,8 @@ ShareBrowser::Menu::Action ShareBrowser::Menu::exec(const dcpp::UserPtr &user){
     const QPixmap &dir_px = WICON(WulforUtil::eiFOLDER_BLUE);
     QString aliases, paths;
 
-    aliases = QByteArray::fromBase64(WSGET(WS_DOWNLOADTO_ALIASES).toAscii());
-    paths   = QByteArray::fromBase64(WSGET(WS_DOWNLOADTO_PATHS).toAscii());
+    aliases = QByteArray::fromBase64(WSGET(WS_DOWNLOADTO_ALIASES).toUtf8());
+    paths   = QByteArray::fromBase64(WSGET(WS_DOWNLOADTO_PATHS).toUtf8());
 
     QStringList a = aliases.split("\n", QString::SkipEmptyParts);
     QStringList p = paths.split("\n", QString::SkipEmptyParts);
@@ -140,7 +146,7 @@ ShareBrowser::Menu::Action ShareBrowser::Menu::exec(const dcpp::UserPtr &user){
     QStringList temp_pathes = DownloadToDirHistory::get();
 
     if (!temp_pathes.isEmpty()){
-        foreach (const QString &t, temp_pathes){
+        for (const auto &t : temp_pathes){
             QAction *act = new QAction(WICON(WulforUtil::eiFOLDER_BLUE), QDir(t).dirName(), down_to);
             act->setToolTip(t);
             act->setData(t);
@@ -203,7 +209,7 @@ ShareBrowser::ShareBrowser(UserPtr user, QString file, QString jump_to):
 {
 
 
-    nick = WulforUtil::getInstance()->getNicks(user->getCID());;
+    nick = WulforUtil::getInstance()->getNicks(user->getCID());
 
     if (nick.indexOf(_q(user->getCID().toBase32()) >= 0)){//User offline
         nick = _q(ClientManager::getInstance()->getNicks(HintedUser(user, ""))[0]);
@@ -295,8 +301,16 @@ void ShareBrowser::init(){
     lineEdit_FILTER->installEventFilter(this);
 
     treeView_LPANE->setModel(tree_model);
+
     treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_ESIZE);
     treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_TTH);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_BR);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_WH);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_MVIDEO);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_MAUDIO);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_HIT);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_TS);
+
     treeView_LPANE->setExpanded(tree_model->index(0, 0), true);
     treeView_LPANE->setContextMenuPolicy(Qt::CustomContextMenu);
 
@@ -381,8 +395,17 @@ void ShareBrowser::load(){
         splitter->setSizes(frames);
     }
 
-    treeView_LPANE->header()->restoreState(QByteArray::fromBase64(WSGET(WS_SHARE_LPANE_STATE).toAscii()));
-    treeView_RPANE->header()->restoreState(QByteArray::fromBase64(WSGET(WS_SHARE_RPANE_STATE).toAscii()));
+    treeView_LPANE->header()->restoreState(QByteArray::fromBase64(WSGET(WS_SHARE_LPANE_STATE).toUtf8()));
+    treeView_RPANE->header()->restoreState(QByteArray::fromBase64(WSGET(WS_SHARE_RPANE_STATE).toUtf8()));
+
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_ESIZE);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_TTH);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_BR);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_WH);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_MVIDEO);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_MAUDIO);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_HIT);
+    treeView_LPANE->header()->hideSection(COLUMN_FILEBROWSER_TS);
 
     treeView_LPANE->setSortingEnabled(true);
     treeView_RPANE->setSortingEnabled(true);
@@ -550,45 +573,48 @@ void ShareBrowser::changeRoot(dcpp::DirectoryListing::Directory *root){
 
     current_size = 0;
 
-    DirectoryListing::Directory::Iter it;
-
-    for (it = root->directories.begin(); it != root->directories.end(); ++it){
+    for (const auto &dir : root->directories){
         FileBrowserItem *child;
         quint64 size = 0;
         QList<QVariant> data;
 
-        size = (*it)->getTotalSize(true);
+        size = dir->getTotalSize(true);
         current_size += size;
 
-        data << _q((*it)->getName())
+        data << _q(dir->getName())
              << WulforUtil::formatBytes(size)
              << size
              << "";
 
         child = new FileBrowserItem(data, list_root);
-        child->dir = *it;
+        child->dir = dir;
 
         list_root->appendChild(child);
     }
 
     DirectoryListing::File::List *files = &(root->files);
-    DirectoryListing::File::Iter it_file;
 
-    for (it_file = files->begin(); it_file != files->end(); ++it_file){
+    for (const auto &file : *files){
         FileBrowserItem *child;
         quint64 size = 0;
         QList<QVariant> data;
 
-        size = (*it_file)->getSize();
+        size = file->getSize();
         current_size += size;
 
-        data << _q((*it_file)->getName())
+        data << _q(file->getName())
              << WulforUtil::formatBytes(size)
              << size
-             << _q((*it_file)->getTTH().toBase32());
+             << _q(file->getTTH().toBase32())
+             << file->mediaInfo.bitrate
+             << _q(file->mediaInfo.resolution)
+             << _q(file->mediaInfo.video_info)
+             << _q(file->mediaInfo.audio_info)
+             << (quint64)file->getHit()
+             << QDateTime::fromTime_t(file->getTS()).toString("yyyy-MM-dd hh:mm");
 
         child = new FileBrowserItem(data, list_root);
-        child->file = (*it_file);
+        child->file = file;
 
         list_root->appendChild(child);
     }
@@ -605,12 +631,10 @@ void ShareBrowser::slotRightPaneSelChanged(const QItemSelection &, const QItemSe
     qulonglong selected_size    = 0;
     quint32    total_selected   = 0;
 
-    std::for_each(list.begin(), list.end(),
-                  [&total_selected, &selected_size](const QModelIndex &i) {
-                      selected_size += reinterpret_cast<FileBrowserItem*>(i.internalPointer())->data(COLUMN_FILEBROWSER_ESIZE).toULongLong();
-                      total_selected++;
-                  }
-                 );
+    for (const auto &i : list) {
+        selected_size += reinterpret_cast<FileBrowserItem*>(i.internalPointer())->data(COLUMN_FILEBROWSER_ESIZE).toULongLong();
+        total_selected++;
+    }
 
     QString status;
 
@@ -785,7 +809,7 @@ void ShareBrowser::slotCustomContextMenu(const QPoint &){
     QModelIndexList selected  = selection_model->selectedRows(0);
 
     if (view == treeView_RPANE && treeView_RPANE->model() == proxy){
-        foreach (const QModelIndex &i, selected)
+        for (const QModelIndex &i : selected)
             list.push_back(proxy->mapToSource(i));
     }
     else
@@ -804,7 +828,7 @@ void ShareBrowser::slotCustomContextMenu(const QPoint &){
         }
         case Menu::Download:
         {
-            foreach (const QModelIndex &index, list){
+            for (const auto &index : list){
                 FileBrowserItem *item = reinterpret_cast<FileBrowserItem*>(index.internalPointer());
 
                 if (item->file)
@@ -839,7 +863,7 @@ void ShareBrowser::slotCustomContextMenu(const QPoint &){
             DownloadToDirHistory::put(temp_pathes);
 
             if (!target.isEmpty()){
-                foreach (const QModelIndex &index, list){
+                for (const auto &index : list){
                     FileBrowserItem *item = reinterpret_cast<FileBrowserItem*>(index.internalPointer());
 
                     if (item->file)
@@ -853,7 +877,7 @@ void ShareBrowser::slotCustomContextMenu(const QPoint &){
         }
         case Menu::Alternates:
         {
-            foreach (const QModelIndex &index, list){
+            for (const auto &index : list){
                 FileBrowserItem *item = reinterpret_cast<FileBrowserItem*>(index.internalPointer());
 
                 if (item->file){//search alternates only for files
@@ -874,7 +898,7 @@ void ShareBrowser::slotCustomContextMenu(const QPoint &){
             QString path, tth, magnet;
             qlonglong size;
 
-            foreach (const QModelIndex &index, list){
+            for (const auto &index : list){
                 FileBrowserItem *item = reinterpret_cast<FileBrowserItem*>(index.internalPointer());
 
                 path = item->data(COLUMN_FILEBROWSER_NAME).toString();
@@ -899,7 +923,7 @@ void ShareBrowser::slotCustomContextMenu(const QPoint &){
             QString path, tth, magnet;
             qlonglong size;
 
-            foreach (const QModelIndex &index, list){
+            for (const auto &index : list){
                 FileBrowserItem *item = reinterpret_cast<FileBrowserItem*>(index.internalPointer());
 
                 path = item->data(COLUMN_FILEBROWSER_NAME).toString();
@@ -923,7 +947,7 @@ void ShareBrowser::slotCustomContextMenu(const QPoint &){
             QString path, tth, magnet;
             qlonglong size;
 
-            foreach (const QModelIndex &index, list){
+            for (const auto &index : list){
                 FileBrowserItem *item = reinterpret_cast<FileBrowserItem*>(index.internalPointer());
 
                 path = item->data(COLUMN_FILEBROWSER_NAME).toString();
@@ -956,14 +980,14 @@ void ShareBrowser::slotCustomContextMenu(const QPoint &){
             if (!ok)
                 break;
 
-            foreach (QModelIndex index, list)
+            for (auto &index : list)
                 tree_model->updateRestriction(index, share_sz);
 
             break;
         }
         case Menu::RemoveRestriction:
         {
-            foreach (QModelIndex index, list)
+            for (auto &index : list)
                 tree_model->updateRestriction(index, 0);
 
             break;
@@ -972,7 +996,7 @@ void ShareBrowser::slotCustomContextMenu(const QPoint &){
         {
             ShareManager *SM = ShareManager::getInstance();
 
-            foreach (const QModelIndex &index, list){
+            for (const auto &index : list){
                 FileBrowserItem *item = reinterpret_cast<FileBrowserItem*>(index.internalPointer());
 
                 if (!item)
@@ -999,13 +1023,12 @@ void ShareBrowser::slotCustomContextMenu(const QPoint &){
                 }
                 catch ( ... ){ }
 
-                dcpp::StringIter it = lst.begin();
-                for (; it != lst.end(); ++it){
-                    if (QDir(_q(*it)).exists())
+                for (const auto &it : lst){
+                    if (QDir(_q(it)).exists())
 #ifndef Q_WS_WIN
-                        QDesktopServices::openUrl(QUrl("file://"+_q(*it)));
+                        QDesktopServices::openUrl(QUrl("file://"+_q(it)));
 #else
-                        QDesktopServices::openUrl(QUrl("file:///"+_q(*it)));
+                        QDesktopServices::openUrl(QUrl("file:///"+_q(it)));
 #endif
                 }
             }

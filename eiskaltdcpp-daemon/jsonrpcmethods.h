@@ -49,5 +49,23 @@ class JsonRpcMethods
     bool ListHubsFullDesc(const Json::Value& root, Json::Value& response);
     bool GetHubUserList(const Json::Value& root, Json::Value& response);
     bool GetUserInfo(const Json::Value& root, Json::Value& response);
-
+    bool OpenFileList(const Json::Value& root, Json::Value& response);
+    bool ShowLocalLists(const Json::Value& root, Json::Value& response);
+    bool GetClientFileList(const Json::Value& root, Json::Value& response);
+    bool CloseFileList(const Json::Value& root, Json::Value& response);
+    bool CloseAllFileLists(const Json::Value& root, Json::Value& response);
+    bool ShowOpenedLists(const Json::Value& root, Json::Value& response);
+    bool LsDirInList(const Json::Value& root, Json::Value& response);
+    bool DownloadDirFromList(const Json::Value &root, Json::Value &response);
+    bool DownloadFileFromList(const Json::Value &root, Json::Value &response);
+    bool GetItemDescbyTarget(const Json::Value &root, Json::Value &response);
+    bool QueueClear(const Json::Value &root, Json::Value &response);
+    bool SettingsGetSet(const Json::Value &root, Json::Value &response);
+    bool IpFilterOnOff(const Json::Value &root, Json::Value &response);
+    bool IpFilterList(const Json::Value &root, Json::Value &response);
+    bool IpFilterAddRules(const Json::Value &root, Json::Value &response);
+    bool IpFilterPurgeRules(const Json::Value &root, Json::Value &response);
+    bool IpFilterUpDownRule(const Json::Value &root, Json::Value &response);
+private:
+    void FailedValidateRequest(Json::Value &error);
 };

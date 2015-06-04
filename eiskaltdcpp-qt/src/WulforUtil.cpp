@@ -47,6 +47,10 @@
 #include <QRegExp>
 #include <QProcess>
 
+#if QT_VERSION >= 0x050000
+#include <QUrlQuery>
+#endif
+
 #include "SearchFrame.h"
 #include "extra/magnet.h"
 
@@ -117,7 +121,7 @@ WulforUtil::WulforUtil()
     QtEnc2DCEnc["WINDOWS-1256"] = "CP1256 (Arabic)";
     QtEnc2DCEnc["WINDOWS-1257"] = "CP1257 (Baltic)";
 
-    bin_path = QApplication::applicationDirPath();
+    bin_path = qApp->applicationDirPath();
 
     if (!bin_path.endsWith(PATH_SEPARATOR))
         bin_path += PATH_SEPARATOR_STR;
@@ -140,6 +144,13 @@ bool WulforUtil::loadUserIcons(){
     if (QDir(settings_path).exists())
         return loadUserIconsFromFile(settings_path + PATH_SEPARATOR_STR + QString("usericons.png"));
 
+#if defined(Q_WS_MAC)
+    settings_path = bin_path + "../../qt/icons/user/" + user_theme;
+    settings_path = QDir::toNativeSeparators(settings_path);
+    if (QDir(settings_path).exists())
+        return loadUserIconsFromFile(settings_path + PATH_SEPARATOR_STR + QString("usericons.png"));
+#endif // defined(Q_WS_MAC)
+
     settings_path = bin_path + "icons/user/" + user_theme;
     settings_path = QDir::toNativeSeparators(settings_path);
     if (QDir(settings_path).exists())
@@ -160,7 +171,7 @@ bool WulforUtil::loadUserIcons(){
     if (QDir(settings_path).exists())
         return loadUserIconsFromFile(settings_path + PATH_SEPARATOR_STR + QString("usericons.png"));
 
-    settings_path = qApp->applicationDirPath() + QDir::separator() + CLIENT_ICONS_DIR "/user/" + user_theme;
+    settings_path = bin_path + CLIENT_ICONS_DIR "/user/" + user_theme;
     settings_path = QDir::toNativeSeparators(settings_path);
     if (QDir(settings_path).exists())
         return loadUserIconsFromFile(settings_path + PATH_SEPARATOR_STR + QString("usericons.png"));
@@ -178,6 +189,13 @@ QString WulforUtil::findAppIconsPath(){
     if (QDir(settings_path).exists())
         return settings_path;
 
+#if defined(Q_WS_MAC)
+    settings_path = bin_path + "../../qt/icons/appl/" + icon_theme;
+    settings_path = QDir::toNativeSeparators(settings_path);
+    if (QDir(settings_path).exists())
+        return settings_path;
+#endif // defined(Q_WS_MAC)
+
     settings_path = QDir::homePath() + "/.eiskaltdc++/icons/appl/" + icon_theme;
     settings_path = QDir::toNativeSeparators(settings_path);
     if (QDir(settings_path).exists())
@@ -194,7 +212,7 @@ QString WulforUtil::findAppIconsPath(){
     if (QDir(settings_path).exists())
         return settings_path;
 
-    settings_path = qApp->applicationDirPath() + QDir::separator() + CLIENT_ICONS_DIR "/appl/" + icon_theme;
+    settings_path = bin_path + CLIENT_ICONS_DIR "/appl/" + icon_theme;
     settings_path = QDir::toNativeSeparators(settings_path);
 
     if (QDir(settings_path).exists())
@@ -226,7 +244,7 @@ void WulforUtil::clearUserIconCache(){
 
 QPixmap *WulforUtil::getUserIcon(const UserPtr &id, bool isAway, bool isOp, const QString &sp){
 
-    int x = connectionSpeeds[sp];
+    int x = connectionSpeeds.value(sp, 5);
     int y = 0;
 
     if (isAway)
@@ -290,9 +308,9 @@ bool WulforUtil::loadIcons(){
 
     QString icon_theme = WSGET(WS_APP_ICONTHEME);
 #if !defined(Q_WS_WIN)
-    QString fname = QString(CLIENT_RES_DIR)+QDir::separator()+icon_theme+".rcc";
+    QString fname = QString(CLIENT_RES_DIR) + PATH_SEPARATOR_STR + icon_theme+".rcc";
 #else
-    QString fname = qApp->applicationDirPath()+QDir::separator()+CLIENT_RES_DIR+QDir::separator()+icon_theme+".rcc";
+    QString fname = bin_path + CLIENT_RES_DIR + PATH_SEPARATOR_STR + icon_theme + ".rcc";
 #endif
     bool resourceFound = false;
 
@@ -393,7 +411,7 @@ QPixmap WulforUtil::loadPixmap(const QString &file){
     if (p.load(f))
         return p;
 
-    printf("loadPixmap: Can't load '%s'\n", f.toAscii().constData());
+    printf("loadPixmap: Can't load '%s'\n", f.toUtf8().constData());
 
     m_bError = true;
 
@@ -408,6 +426,11 @@ const QPixmap &WulforUtil::getPixmap(enum WulforUtil::Icons e){
 
 QString WulforUtil::getNicks(const QString &cid, const QString &hintUrl){
     return getNicks(CID(cid.toStdString()), hintUrl);
+}
+
+QString WulforUtil::getNickViaOnlineUser(const QString &cid, const QString &hintUrl) {
+    OnlineUser* user = ClientManager::getInstance()->findOnlineUser(CID(_tq(cid)), _tq(hintUrl), true);
+    return user ? _q(user->getIdentity().getNick()) : QString();
 }
 
 QString WulforUtil::getNicks(const CID &cid, const QString &hintUrl){
@@ -696,7 +719,7 @@ QTextCodec *WulforUtil::codecForEncoding(QString name){
     if (!QtEnc2DCEnc.contains(name))
         return QTextCodec::codecForLocale();
 
-    return QTextCodec::codecForName(name.toAscii());
+    return QTextCodec::codecForName(name.toUtf8());
 }
 
 bool WulforUtil::openUrl(const QString &url){
@@ -704,7 +727,7 @@ bool WulforUtil::openUrl(const QString &url){
         if (!SETTING(MIME_HANDLER).empty())
             QProcess::startDetached(_q(SETTING(MIME_HANDLER)), QStringList(url));
         else
-            QDesktopServices::openUrl(QUrl::fromEncoded(url.toAscii()));
+            QDesktopServices::openUrl(QUrl::fromEncoded(url.toUtf8()));
     }
     else if (url.startsWith("adc://") || url.startsWith("adcs://")){
         MainWindow::getInstance()->newHubFrame(url, "UTF-8");
@@ -724,20 +747,32 @@ bool WulforUtil::openUrl(const QString &url){
         m->deleteLater();
     }
     else if (url.startsWith("magnet:")){
-        QString magnet = url;
+        const QString magnet = url;
 
+#if QT_VERSION >= 0x050000
+        QUrlQuery u;
+#else
         QUrl u;
+#endif
 
-        if (!magnet.contains("+"))
-            u.setEncodedUrl(magnet.toAscii());
-        else {
+        if (!magnet.contains("+")) {
+#if QT_VERSION >= 0x050000
+                u.setQuery(magnet.toUtf8());
+#else
+                u.setEncodedUrl(magnet.toUtf8());
+#endif
+        } else {
             QString _l = magnet;
 
             _l.replace("+", "%20");
-            u.setEncodedUrl(_l.toAscii());
+#if QT_VERSION >= 0x050000
+                u.setQuery(_l.toUtf8());
+#else
+                u.setEncodedUrl(_l.toUtf8());
+#endif
         }
 
-        if (u.hasQueryItem("kt")){
+        if (u.hasQueryItem("kt")) {
             QString keywords = u.queryItemValue("kt");
             QString hub = u.hasQueryItem("xs")? u.queryItemValue("xs") : "";
 
@@ -759,7 +794,7 @@ bool WulforUtil::openUrl(const QString &url){
             if (!SETTING(MIME_HANDLER).empty())
                 QProcess::startDetached(_q(SETTING(MIME_HANDLER)), QStringList(url));
             else
-                QDesktopServices::openUrl(QUrl::fromEncoded(url.toAscii()));
+                QDesktopServices::openUrl(QUrl::fromEncoded(url.toUtf8()));
         }
     }
     else
@@ -792,7 +827,7 @@ bool WulforUtil::getUserCommandParams(const UserCommand& uc, StringMap& params) 
 
     std::vector<std::function<void ()> > valueFs;
 
-    foreach(const string name, names) {
+    for (const auto &name : names) {
         QString caption = _q(name);
 
         if (uc.adc()) {
@@ -820,8 +855,8 @@ bool WulforUtil::getUserCommandParams(const UserCommand& uc, StringMap& params) 
         QHBoxLayout *hlayout = new QHBoxLayout(box);
 
         if (combo_sel >= 0) {
-            for(auto it = combo_values.begin(); it != combo_values.end(); it++)
-                it->replace("\t", "/");
+            for (auto &val : combo_values)
+                val.replace("\t", "/");
 
             QComboBox *combo = new QComboBox(box);
             hlayout->addWidget(combo);
@@ -861,7 +896,8 @@ bool WulforUtil::getUserCommandParams(const UserCommand& uc, StringMap& params) 
     if (dlg.exec() != QDialog::Accepted)
         return false;
 
-    foreach(auto fs, valueFs) fs();
+    for (const auto &fs : valueFs)
+        fs();
 
     return true;
 }
@@ -934,45 +970,8 @@ QStringList WulforUtil::getLocalIPs(){
     return addresses;
 }
 
-QString WulforUtil::formatBytes(int64_t aBytes, int base){
-    QString s;
-
-    if (base == 1024){
-        if(aBytes < 1024)
-            s = tr("%1 B").arg((int)(aBytes & 0xffffffff));
-        else if(aBytes < 1024*1024)
-            s = tr("%1 KiB").arg(static_cast<double>(aBytes)/1024.0, 0, 'f', 1);
-        else if(aBytes < 1024*1024*1024)
-            s = tr("%1 MiB").arg(static_cast<double>(aBytes)/(1024.0*1024.0), 0, 'f', 1);
-        else if(aBytes < static_cast<int64_t>(1024)*1024*1024*1024)
-            s = tr("%1 GiB").arg(static_cast<double>(aBytes)/(1024.0*1024.0*1024.0), 0, 'f', 2);
-        else if(aBytes < static_cast<int64_t>(1024)*1024*1024*1024*1024)
-            s = tr("%1 TiB").arg(static_cast<double>(aBytes)/(1024.0*1024.0*1024.0*1024.0), 0, 'f', 3);
-        else
-            s = tr("%1 PiB").arg(static_cast<double>(aBytes)/(1024.0*1024.0*1024.0*1024.0*1024.0), 0, 'f', 4);
-    }
-    else if (base == 1000){
-        if(aBytes < 1000)
-            s = tr("%1 B").arg((int)(aBytes & 0xffffffff));
-        else if(aBytes < 1000*1000)
-            s = tr("%1 KB").arg(static_cast<double>(aBytes)/1000.0, 0, 'f', 1);
-        else if(aBytes < 1000*1000*1000)
-            s = tr("%1 MB").arg(static_cast<double>(aBytes)/(1000.0*1000.0), 0, 'f', 1);
-        else if(aBytes < static_cast<int64_t>(1000)*1000*1000*1000)
-            s = tr("%1 GB").arg(static_cast<double>(aBytes)/(1000.0*1000.0*1000.0), 0, 'f', 2);
-        else if(aBytes < static_cast<int64_t>(1000)*1000*1000*1000*1000)
-            s = tr("%1 TB").arg(static_cast<double>(aBytes)/(1000.0*1000.0*1000.0*1000.0), 0, 'f', 3);
-        else
-            s = tr("%1 PB").arg(static_cast<double>(aBytes)/(1000.0*1000.0*1000.0*1000.0*1000.0), 0, 'f', 4);
-    }
-    else
-        s = "";
-
-    return s;
-}
-
 QString WulforUtil::formatBytes(int64_t aBytes){
-    return formatBytes(aBytes, WIGET(WI_APP_UNIT_BASE));
+    return _q(Util::formatBytes(aBytes));
 }
 
 QString WulforUtil::makeMagnet(const QString &path, const int64_t size, const QString &tth){
@@ -1100,8 +1099,8 @@ void WulforUtil::headerMenu(QTreeView *tree){
 
 QMenu *WulforUtil::buildUserCmdMenu(const QList<QString> &hub_list, int ctx, QWidget* parent) {
     dcpp::StringList hubs;
-    foreach (const QString &s, hub_list)
-        hubs.push_back(_tq(s));
+    for (const auto &hub : hub_list)
+        hubs.push_back(_tq(hub));
 
     return buildUserCmdMenu(hubs, ctx, parent);
 }
@@ -1119,7 +1118,7 @@ QMenu *WulforUtil::buildUserCmdMenu(const StringList& hub_list, int ctx, QWidget
     QMenu *ucMenu = new QMenu(tr("User commands"), parent);
 
     QMenu *menuPtr = ucMenu;
-    for(size_t n = 0; n < userCommands.size(); ++n) {
+    for (size_t n = 0; n < userCommands.size(); ++n) {
         UserCommand *uc = &userCommands[n];
         if (uc->getType() == UserCommand::TYPE_SEPARATOR) {
             // Avoid double separators...
@@ -1130,13 +1129,12 @@ QMenu *WulforUtil::buildUserCmdMenu(const StringList& hub_list, int ctx, QWidget
             }
         } else if (uc->isRaw() || uc->isChat()) {
             menuPtr = ucMenu;
-            for(auto ibegin = uc->getDisplayName().begin(), iend = uc->getDisplayName().end(); ibegin != iend; ++ibegin) {
-                const QString name = _q(*ibegin);
-                if (ibegin + 1 == iend) {
-                    QAction *act = menuPtr->addAction(name);
-                    act->setToolTip(_q(uc->getCommand()));
-                    act->setStatusTip(_q(uc->getName()));
-                    act->setData(_q(uc->getHub()));
+            auto _begin = uc->getDisplayName().begin();
+            auto _end = uc->getDisplayName().end();
+            for(; _begin != _end; ++_begin) {
+                const QString name = _q(*_begin);
+                if (_begin + 1 == _end) {
+                    menuPtr->addAction(name)->setData(uc->getId());
                 } else {
                     bool found = false;
                     QListIterator<QAction*> iter(menuPtr->actions());

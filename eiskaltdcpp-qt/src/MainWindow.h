@@ -201,6 +201,7 @@ friend class dcpp::Singleton<MainWindow>;
         void slotToolsAutoAway();
         void slotToolsSearch();
         void slotToolsADLS();
+        void slotToolsCmdDebug();
         void slotToolsCopyWindowTitle();
         void slotToolsSettings();
         void slotToolsJS();
@@ -245,8 +246,8 @@ friend class dcpp::Singleton<MainWindow>;
         // These slots are used only in Mac OS X.
         // But due to bug in moc they cannot be placed in #ifdef block.
         void slotShowSpeedLimits();
-        void slotSupressTxt();
-        void slotSupressSnd();
+        void slotSuppressTxt();
+        void slotSuppressSnd();
         //
 
     Q_SIGNALS:

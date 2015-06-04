@@ -57,12 +57,12 @@ ScriptEngine::ScriptEngine() :
         QObject(NULL)
 {
     DEBUG_BLOCK
-    
+
     setObjectName("ScriptEngine");
-    
+
     qRegisterMetaType<ArenaWidget::Flags>("Flags");
     qRegisterMetaType<ArenaWidget::Flags>("ArenaWidget::Flags");
-        
+
     connect(WulforSettings::getInstance(), SIGNAL(strValueChanged(QString,QString)), this, SLOT(slotWSKeyChanged(QString,QString)));
     connect(&watcher, SIGNAL(fileChanged(QString)), this, SLOT(slotScriptChanged(QString)));
     connect(GlobalTimer::getInstance(), SIGNAL(second()), this ,SLOT(slotProcessChangedFiles()));
@@ -72,7 +72,7 @@ ScriptEngine::ScriptEngine() :
 
 ScriptEngine::~ScriptEngine(){
     DEBUG_BLOCK
-    
+
     stopScripts();
 
     ClientManagerScript::deleteInstance();
@@ -81,21 +81,21 @@ ScriptEngine::~ScriptEngine(){
 
 void ScriptEngine::loadScripts(){
     DEBUG_BLOCK
-    
-    QStringList enabled = QString(QByteArray::fromBase64(WSGET(WS_APP_ENABLED_SCRIPTS).toAscii())).split("\n");
 
-    foreach (QString s, enabled)
+    QStringList enabled = QString(QByteArray::fromBase64(WSGET(WS_APP_ENABLED_SCRIPTS).toLatin1())).split("\n");
+
+    for (const auto &s : enabled)
         loadScript(s);
 }
 
 void ScriptEngine::loadScript(const QString &path){
     DEBUG_BLOCK
-    
+
     QFile f(path);
 
     if (!f.exists())
         return;
-    
+
     stopScript(path);
 
     if (path.endsWith(".js", Qt::CaseInsensitive))
@@ -108,7 +108,7 @@ void ScriptEngine::loadScript(const QString &path){
 
 void ScriptEngine::loadJSScript(const QString &file){
     DEBUG_BLOCK
-    
+
     QFile f(file);
 
     if (!f.open(QIODevice::ReadOnly))
@@ -126,13 +126,13 @@ void ScriptEngine::loadJSScript(const QString &file){
     obj->engine.globalObject().setProperty("SCRIPT_PATH", scriptPath);
 
     scripts.insert(file, obj);
-    
+
     watcher.addPath(file);
 
     obj->engine.evaluate(data, file);
 
     if (obj->engine.hasUncaughtException()){
-        foreach (QString s, obj->engine.uncaughtExceptionBacktrace())
+        for (const auto &s : obj->engine.uncaughtExceptionBacktrace())
             qDebug() << s;
     }
 }
@@ -140,14 +140,14 @@ void ScriptEngine::loadJSScript(const QString &file){
 #ifdef USE_QML
 void ScriptEngine::loadQMLScript(const QString &file){
     DEBUG_BLOCK
-    
+
     DeclarativeWidget *wgt = ArenaWidgetFactory().create<DeclarativeWidget, QString>(file);
 }
 #endif
 
 void ScriptEngine::stopScripts(){
     DEBUG_BLOCK
-    
+
     QMap<QString, ScriptObject*> s = scripts;
     auto it = s.begin();
 
@@ -159,12 +159,12 @@ void ScriptEngine::stopScripts(){
 
 void ScriptEngine::stopScript(const QString &path){
     DEBUG_BLOCK
-    
+
     if (!scripts.contains(path))
         return;
 
     watcher.removePath(path);
-    
+
     ScriptObject *obj = scripts.value(path);
 
     obj->engine.globalObject().property("deinit").call();
@@ -182,26 +182,26 @@ void ScriptEngine::stopScript(const QString &path){
 
 void ScriptEngine::slotProcessChangedFiles() {
     DEBUG_BLOCK
-    
-    foreach(const QString &file , changedFiles)
+
+    for (const QString &file : changedFiles)
         emit scriptChanged(file);
-    
+
     changedFiles.clear();
 }
 
 
 void ScriptEngine::prepareThis(QScriptEngine &engine){
     DEBUG_BLOCK
-    
+
     QScriptValue me = engine.newQObject(&engine);
     engine.globalObject().setProperty(objectName(), me);
 
-#ifndef WIN32
+#ifndef _WIN32
     QScriptValue scriptsPath = QScriptValue(&engine, QString(CLIENT_SCRIPTS_DIR)+QDir::separator());
 #else
     QScriptValue scriptsPath = QScriptValue(&engine,
         qApp->applicationDirPath()+QDir::separator()+CLIENT_SCRIPTS_DIR+QDir::separator() );
-#endif//WIN32
+#endif//_WIN32
     engine.globalObject().setProperty("SCRIPTS_PATH", scriptsPath, QScriptValue::ReadOnly);
 
     QScriptValue shellEx = engine.newFunction(shellExec);
@@ -209,7 +209,7 @@ void ScriptEngine::prepareThis(QScriptEngine &engine){
 
     QScriptValue getMagnet = engine.newFunction(getMagnets);
     engine.globalObject().setProperty("getMagnets", getMagnet, QScriptValue::ReadOnly);
-	
+
     QScriptValue printE = engine.newFunction(printErr);
     engine.globalObject().setProperty("printErr", printE, QScriptValue::ReadOnly);
 
@@ -237,10 +237,10 @@ void ScriptEngine::prepareThis(QScriptEngine &engine){
     QScriptValue linkParser_parseMagnet = engine.newFunction(parseMagnetAlias);
     linkParser.setProperty("parse", linkParser_parse, QScriptValue::ReadOnly);
     linkParser.setProperty("parseMagnetAlias", linkParser_parseMagnet, QScriptValue::ReadOnly);
-    
+
     QScriptValue widgetManager = engine.newQObject(ArenaWidgetManager::getInstance());
     engine.globalObject().setProperty("WidgetManager", widgetManager, QScriptValue::ReadOnly);
-    
+
     qScriptRegisterSequenceMetaType< QList<QObject*> >(&engine);
     qScriptRegisterMetaType<VarMap>(&engine, ScriptVarMapToScriptValue, ScriptVarMapFromScriptValue);
     qScriptRegisterMetaType<VarMap>(&engine, ScriptVarMapToScriptValue, ScriptVarMapFromScriptValue);
@@ -255,13 +255,13 @@ void ScriptEngine::prepareThis(QScriptEngine &engine){
 
 void ScriptEngine::registerStaticMembers(QScriptEngine &engine){
     DEBUG_BLOCK
-    
+
     static QStringList staticMembers = QStringList() << "AntiSpam"          << "DownloadQueue"  << "FavoriteHubs"
                                                      << "Notification"      << "HubManager"     << "ClientManagerScript"
                                                      << "LogManagerScript"  << "FavoriteUsers"  << "HashManagerScript"
                                                      << "WulforUtil"        << "WulforSettings";
 
-    foreach( QString cl, staticMembers ) {
+    for (const auto &cl : staticMembers) {
         QScriptValue ct = engine.newFunction(staticMemberConstructor);
         ct.setProperty("className", cl, QScriptValue::ReadOnly);
         engine.globalObject().setProperty(cl, ct, QScriptValue::ReadOnly);
@@ -270,11 +270,11 @@ void ScriptEngine::registerStaticMembers(QScriptEngine &engine){
 
 void ScriptEngine::registerDynamicMembers(QScriptEngine &engine){
     DEBUG_BLOCK
-    
+
     static QStringList dynamicMembers = QStringList() << "HubFrame" << "SearchFrame" << "ShellCommandRunner" << "MainWindowScript"
                                                       << "ScriptWidget";
 
-    foreach( QString cl, dynamicMembers ) {
+    for (const auto &cl : dynamicMembers) {
         QScriptValue ct = engine.newFunction(dynamicMemberConstructor);
         ct.setProperty("className", cl, QScriptValue::ReadOnly);
         engine.globalObject().setProperty(cl, ct, QScriptValue::ReadOnly);
@@ -283,12 +283,12 @@ void ScriptEngine::registerDynamicMembers(QScriptEngine &engine){
 
 void ScriptEngine::slotWSKeyChanged(const QString &key, const QString &value){
     DEBUG_BLOCK
-    
+
     if (key == WS_APP_ENABLED_SCRIPTS){
-        QStringList enabled = QString(QByteArray::fromBase64(value.toAscii())).split("\n", QString::SkipEmptyParts);
+        QStringList enabled = QString(QByteArray::fromBase64(value.toLatin1())).split("\n", QString::SkipEmptyParts);
         QMap<QString, ScriptObject*>::iterator it;
 
-        foreach (QString script, enabled){
+        for (const auto &script : enabled){
             it = scripts.find(script);
 
             if (it == scripts.end())
@@ -305,7 +305,7 @@ void ScriptEngine::slotWSKeyChanged(const QString &key, const QString &value){
 
 void ScriptEngine::slotScriptChanged(const QString &script){
     DEBUG_BLOCK
-    
+
     if (!QFile::exists(script))
         stopScript(script);
     else if (!changedFiles.contains(script)){
@@ -345,7 +345,7 @@ static QScriptValue getMagnets(QScriptContext *ctx, QScriptEngine *engine){
 
     QStringList magnets;
 
-    foreach (QString f, files){
+    for (const auto &f : files){
         QFile file(f);
 
         if (!file.exists())
@@ -498,7 +498,7 @@ static QScriptValue importExtension(QScriptContext *context, QScriptEngine *engi
     const QString name = context->argument(0).toString();
 
     if (!engine->importExtension(name).isUndefined())
-        qDebug() << QString("ScriptEngine> Warning! %1 not found!").arg(name).toAscii().constData();
+        qDebug() << QString("ScriptEngine> Warning! %1 not found!").arg(name).toLatin1().constData();
 
     return QScriptValue();
 }
@@ -557,16 +557,16 @@ static QScriptValue includeFile(QScriptContext *ctx, QScriptEngine *engine){
 }
 
 QScriptValue printErr(QScriptContext *ctx, QScriptEngine *engine){
-	if (ctx->argumentCount() < 1)
+        if (ctx->argumentCount() < 1)
         return engine->undefinedValue();
-    
+
     QString out = ctx->argument(0).toString();
-    
+
     for (int i = 1; i < ctx->argumentCount(); i++)
         out = out.arg(ctx->argument(i).toString());
-   
+
     qWarning() << qPrintable(out);
-    
+
     return engine->undefinedValue();
 }
 
@@ -574,19 +574,19 @@ QScriptValue ScriptVarMapToScriptValue(QScriptEngine* eng, const VarMap& map)
 {
     QScriptValue a = eng->newObject();
     auto it = map.begin();
-    
+
     for(; it != map.end(); ++it) {
         QString prop = it.key();
-        
+
         a.setProperty(prop, qScriptValueFromValue(eng, it.value()));
     }
 
     return a;
 }
- 
+
 void ScriptVarMapFromScriptValue( const QScriptValue& value, VarMap& map){
     QScriptValueIterator itr(value);
-    
+
     while(itr.hasNext()){
        itr.next();
        map[itr.name()] = qscriptvalue_cast<VarMap::mapped_type>(itr.value());

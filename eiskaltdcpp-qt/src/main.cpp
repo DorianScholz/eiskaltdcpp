@@ -108,7 +108,9 @@ bool dockClickHandler(id self,SEL _cmd,...)
 
 int main(int argc, char *argv[])
 {
+#if QT_VERSION < 0x050000
     QTextCodec::setCodecForCStrings(QTextCodec::codecForName("UTF-8"));
+#endif
     setlocale(LC_ALL, "");
 
     EiskaltApp app(argc, argv, _q(dcpp::Util::getLoginName()+"EDCPP"));
@@ -137,9 +139,9 @@ int main(int argc, char *argv[])
     dcpp::TimerManager::getInstance()->start();
 
     HashManager::getInstance()->setPriority(Thread::IDLE);
-
+#if QT_VERSION < 0x050000
     QTextCodec::setCodecForCStrings(QTextCodec::codecForName("UTF-8"));
-
+#endif
     app.setOrganizationName("EiskaltDC++ Team");
     app.setApplicationName("EiskaltDC++ Qt");
     app.setApplicationVersion(EISKALTDCPP_VERSION);
@@ -252,7 +254,7 @@ int main(int argc, char *argv[])
 }
 
 void parseCmdLine(const QStringList &args){
-    foreach (const QString &arg, args){
+    for (const auto &arg : args){
         if (arg == "-h" || arg == "--help"){
             About().printHelp();
 
@@ -306,6 +308,12 @@ void installHandlers(){
 
     if (sigaction(SIGPIPE, &sa, NULL) == -1)
         printf("Cannot handle SIGPIPE\n");
+    else {
+        sigset_t set;
+        sigemptyset (&set);
+        sigaddset (&set, SIGPIPE);
+        pthread_sigmask(SIG_BLOCK, &set, NULL);
+    }
 
     catchSignals<SIGSEGV, SIGABRT, SIGBUS, SIGTERM>();
 
@@ -329,7 +337,7 @@ void copy(const QDir &from, const QDir &to){
     if (!from_path.endsWith(QDir::separator()))
         from_path += QDir::separator();
 
-    foreach (const QString &s, from.entryList(QDir::Dirs)){
+    for (const auto &s : from.entryList(QDir::Dirs)){
         QDir new_dir(to_path+s);
 
         if (new_dir.exists())
@@ -342,7 +350,7 @@ void copy(const QDir &from, const QDir &to){
         }
     }
 
-    foreach (const QString &f, from.entryList(QDir::Files)){
+    for (const auto &f : from.entryList(QDir::Files)){
         QFile orig(from_path+f);
 
         if (!orig.copy(to_path+f))

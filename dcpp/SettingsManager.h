@@ -62,7 +62,7 @@ public:
         PRIVATE_ID, LOG_FILE_MAIN_CHAT, LOG_FILE_PRIVATE_CHAT,
         LOG_FILE_STATUS, LOG_FILE_UPLOAD,
         LOG_FILE_DOWNLOAD, LOG_FILE_FINISHED_DOWNLOAD, LOG_FILE_SYSTEM, LOG_FORMAT_SYSTEM,
-        LOG_FORMAT_STATUS, TLS_PRIVATE_KEY_FILE,
+        LOG_FORMAT_STATUS, LOG_FILE_SPY, LOG_FORMAT_SPY, TLS_PRIVATE_KEY_FILE,
         TLS_CERTIFICATE_FILE, TLS_TRUSTED_CERTIFICATES_PATH,
         LANGUAGE, SKIPLIST_SHARE, INTERNETIP, BIND_IFACE_NAME,
         DHT_KEY, DYNDNS_SERVER, MIME_HANDLER,
@@ -114,7 +114,8 @@ public:
         IPFILTER, TEXT_COLOR, USE_LUA, ALLOW_NATT, IP_TOS_VALUE, SEGMENT_SIZE,
         BIND_IFACE, MINIMUM_SEARCH_INTERVAL, DYNDNS_ENABLE, ALLOW_UPLOAD_MULTI_HUB,
         USE_ADL_ONLY_OWN_LIST, ALLOW_SIM_UPLOADS, CHECK_TARGETS_PATHS_ON_START,
-        NMDC_DEBUG, SHARE_SKIP_ZERO_BYTE,
+        NMDC_DEBUG, SHARE_SKIP_ZERO_BYTE, REQUIRE_TLS, LOG_SPY,
+        APP_UNIT_BASE,
         INT_LAST };
 
     enum Int64Setting { INT64_FIRST = INT_LAST + 1,
@@ -219,8 +220,6 @@ public:
 
     void unset(size_t key) { isSet[key] = false; }
 
-    const std::string parseCoreCmd(const std::string& cmd);
-
     void load() {
         Util::migrate(getConfigFile());
         load(getConfigFile());
@@ -251,6 +250,10 @@ public:
         return searchTypes;
     }
     const StringList& getExtensions(const string& name);
+
+    const std::string parseCoreCmd(const std::string& cmd);
+    bool parseCoreCmd(string& ret, const std::string& key, const string& value);
+
 private:
     friend class Singleton<SettingsManager>;
     SettingsManager();

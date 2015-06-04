@@ -263,7 +263,7 @@ void SettingsSharing::slotSimpleShareModeChanged(){
             treeView->header()->hideSection(2);
 
             if (!WSGET(WS_SHAREHEADER_STATE).isEmpty())
-                treeView->header()->restoreState(QByteArray::fromBase64(WSGET(WS_SHAREHEADER_STATE).toAscii()));
+                treeView->header()->restoreState(QByteArray::fromBase64(WSGET(WS_SHAREHEADER_STATE).toUtf8()));
 
             connect(model, SIGNAL(getName(QModelIndex)), this, SLOT(slotGetName(QModelIndex)));
             connect(model, SIGNAL(expandMe(QModelIndex)), treeView, SLOT(expand(QModelIndex)));
@@ -275,7 +275,7 @@ void SettingsSharing::slotSimpleShareModeChanged(){
         }
     }
     else{
-        treeWidget_SIMPLE_MODE->header()->restoreState(QByteArray::fromBase64((WSGET("settings-simple-share-headerstate").toAscii())));
+        treeWidget_SIMPLE_MODE->header()->restoreState(QByteArray::fromBase64((WSGET("settings-simple-share-headerstate").toUtf8())));
 
         updateShareView();
     }
@@ -351,7 +351,7 @@ void SettingsSharing::slotContextMenu(const QPoint &){
         item->setText(3, "");
     }
     else if (res == rem){
-        foreach(QTreeWidgetItem *i, selected)
+        for (const auto &i : selected)
             ShareManager::getInstance()->removeDirectory(i->text(0).toStdString());
     }
     else if (res == rename){
@@ -416,7 +416,7 @@ Qt::ItemFlags ShareDirModel::flags(const QModelIndex& index) const{
 
     QString fp = filePath(index);
 
-    foreach (const QString &file, checked){
+    for (const QString &file : checked){
         if (fp.startsWith(file) && (fp.split(QDir::separator()).length() != file.split(QDir::separator()).length()) && fp != file){
             f &= ~(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
 
@@ -437,7 +437,7 @@ QVariant ShareDirModel::data(const QModelIndex& index, int role = Qt::DisplayRol
         case Qt::CheckStateRole:
         {
             if (!index.column()){
-                foreach (const QString &f, checked){
+                for (const QString &f : checked){
                     if (fp.startsWith(f) && fp.length() == f.length())
                         return Qt::Checked;
                 }
@@ -449,7 +449,7 @@ QVariant ShareDirModel::data(const QModelIndex& index, int role = Qt::DisplayRol
         }
         case Qt::ForegroundRole:
         {
-            /*foreach (QString f, checked){
+            /*for (const auto &f : checked){
                 if (f.startsWith(fp))
                     return QColor(0x1F, 0x8F, 0x1F);
             }*/
@@ -462,7 +462,7 @@ QVariant ShareDirModel::data(const QModelIndex& index, int role = Qt::DisplayRol
                 static QFont font;
                 font.setBold(true);
 
-                foreach (const QString &f, checked){
+                for (const QString &f : checked){
                     if (f == fp)
                         return font;
                 }
@@ -537,7 +537,7 @@ void ShareDirModel::setAlias(const QModelIndex &index, const QString &alias){
 }
 
 void ShareDirModel::beginExpanding(){
-    foreach (const QString &f, checked){
+    for (const QString &f : checked){
         QStack<QModelIndex> stack;
         QModelIndex i = index(f);
 

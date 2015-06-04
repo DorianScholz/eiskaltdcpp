@@ -16,7 +16,12 @@
 #include "DebugHelper.h"
 #include "GlobalTimer.h"
 
+#if QT_VERSION >= 0x050000
+#include <QtWidgets>
+#else
 #include <QtGui>
+#endif
+
 #include <QPushButton>
 #include <QWheelEvent>
 #include <functional>
@@ -45,7 +50,7 @@ TabFrame::TabFrame(QWidget *parent) :
               << (new QShortcut(QKeySequence(Qt::ALT + Qt::Key_9), this))
               << (new QShortcut(QKeySequence(Qt::ALT + Qt::Key_0), this));
 
-    foreach (QShortcut *s, shortcuts){
+    for (const auto &s : shortcuts){
         s->setContext(Qt::ApplicationShortcut);
 
         connect(s, SIGNAL(activated()), this, SLOT(slotShorcuts()));

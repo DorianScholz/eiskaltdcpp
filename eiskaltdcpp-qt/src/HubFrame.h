@@ -21,6 +21,7 @@
 #include <QSortFilterProxyModel>
 #include <QCompleter>
 #include <QMetaType>
+#include <QTextBlockUserData>
 
 #include "ui_HubFrame.h"
 
@@ -42,6 +43,13 @@ class PMWindow;
 class HubFramePrivate;
 
 using namespace dcpp;
+
+class UserListUserData : public QTextBlockUserData
+{
+public:
+    UserListUserData(const QString& nick) : data(nick) { }
+    QString data;
+};
 
 class HubFrame :
         public  QWidget,
@@ -171,6 +179,7 @@ Q_SIGNALS:
     void coreFavoriteUserRemoved(QString);
     void closeRequest();
     void highlighted(const VarMap&);
+    void new_msg(const VarMap&);
 
 public Q_SLOTS:
     void disableChat();

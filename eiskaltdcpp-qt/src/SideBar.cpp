@@ -66,6 +66,7 @@ SideBarModel::SideBarModel(QObject *parent) :
     CREATE_ROOT_EL(rootItem, eiFAVUSERS,    tr("Favorite Users"),   roots,  FavoriteUsers);
     CREATE_ROOT_EL(rootItem, eiSERVER,      tr("Public Hubs"),      roots,  PublicHubs);
     CREATE_ROOT_EL(rootItem, eiSPY,         tr("Spy"),              roots,  Spy);
+    CREATE_ROOT_EL(rootItem, eiCONSOLE,     tr("CmdDebug"),          roots,  CmdDebug);
     //CREATE_ROOT_EL(rootItem, eiSERVER,      tr("Hub Manager"),      roots,  HubManager);
     CREATE_ROOT_EL(rootItem, eiGUI,         tr("Other Widgets"),    roots,  CustomWidget);
 
@@ -289,13 +290,9 @@ bool SideBarModel::hasWidget(ArenaWidget *awgt) const{
         return false;
 
     bool inRoot = false;
-    auto it = roots.begin();
-    SideBarItem *item = NULL;
 
-    for(; it != roots.end(); ++it){
-        item = it.value();
-
-        if (item->getWidget() == awgt && awgt->getWidget()->isVisible()){
+    for (const auto &root : roots){
+        if (root->getWidget() == awgt && awgt->getWidget()->isVisible()){
             inRoot = true;
 
             break;
@@ -338,10 +335,8 @@ void SideBarModel::updated ( ArenaWidget* awgt ) {
 }
 
 bool SideBarModel::isRootItem(const SideBarItem *item) const{
-    auto it = roots.begin();
-
-    for(; it != roots.end(); ++it){
-        if (it.value() == item)
+    for (const auto &root : roots){
+        if (root == item)
             return true;
     }
 
@@ -351,7 +346,7 @@ bool SideBarModel::isRootItem(const SideBarItem *item) const{
 ArenaWidget::Role SideBarModel::rootItemRole(const SideBarItem *item) const{
     auto it = roots.begin();
 
-    for(; it != roots.end(); ++it){
+    for (; it != roots.end(); ++it){
         if (it.value() == item)
             return it.key();
     }
@@ -421,6 +416,7 @@ void SideBarModel::slotSettingsChanged(const QString &key, const QString &value)
         RETRANSLATE_ROOT_EL(tr("Spy"),              roots,  Spy);
         RETRANSLATE_ROOT_EL(tr("Other Widgets"),    roots,  CustomWidget);
         RETRANSLATE_ROOT_EL(tr("Queued Users"),     roots,  QueuedUsers);
+        RETRANSLATE_ROOT_EL(tr("CmdDebug"),          roots,  CmdDebug);
     }
 }
 
@@ -562,9 +558,9 @@ void SideBarView::slotSidebarContextMenu(){
         if (menu->exec(QCursor::pos())){
             QList<SideBarItem*> childs = item->childItems;
 
-            foreach (SideBarItem *i, childs){
-                if (i && i->getWidget())
-                    ArenaWidgetManager::getInstance()->rem(i->getWidget());
+            for (const auto &child : childs){
+                if (child && child->getWidget())
+                    ArenaWidgetManager::getInstance()->rem(child->getWidget());
             }
         }
         

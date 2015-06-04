@@ -9,7 +9,12 @@
 
 #include "FinishedTransfersModel.h"
 
+#if QT_VERSION >= 0x050000
+#include <QtWidgets>
+#else
 #include <QtGui>
+#endif
+
 #include <QFileInfo>
 #include <QList>
 #include <QStringList>
@@ -384,7 +389,7 @@ void FinishedTransfersModel::addFile(const QMap<QString, QVariant> &params){
             if (users.isEmpty())
                 continue;
             else{
-                foreach (QString nick, users){
+                for (const auto nick : users){
                     if (!old_users.contains(nick))
                         old_users.push_back(nick);
                 }

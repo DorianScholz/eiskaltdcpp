@@ -155,7 +155,7 @@ QModelIndex ScriptManagerModel::parent(const QModelIndex & ) const {
 }
 
 void ScriptManagerModel::load(){
-    enabled = QString(QByteArray::fromBase64(WSGET(WS_APP_ENABLED_SCRIPTS).toAscii())).split("\n");
+    enabled = QString(QByteArray::fromBase64(WSGET(WS_APP_ENABLED_SCRIPTS).toUtf8())).split("\n");
 
 #if !defined(Q_WS_WIN)
     QDir dir(CLIENT_SCRIPTS_DIR);
@@ -163,14 +163,14 @@ void ScriptManagerModel::load(){
     QDir dir(qApp->applicationDirPath()+QDir::separator()+CLIENT_SCRIPTS_DIR);
 #endif
     if (dir.exists()){
-        foreach (QString d, dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot))
+        for (const auto &d : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot))
             loadDir(QString(CLIENT_SCRIPTS_DIR)+QDir::separator()+d);
     }
 
     dir = QDir(_q(dcpp::Util::getPath(dcpp::Util::PATH_USER_CONFIG)+"scripts"));
 
     if (dir.exists()){
-        foreach (QString d, dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot))
+        for (const auto &d : dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot))
             loadDir(_q(dcpp::Util::getPath(dcpp::Util::PATH_USER_CONFIG))+"scripts"+QDir::separator()+d);
     }
 }
@@ -232,12 +232,12 @@ void ScriptManagerModel::loadDir(const QString &path){
 
 void ScriptManagerModel::save(){
     QString all = "";
-    foreach (ScriptManagerItem *i, rootItem->childItems){
+    for (const auto &i : rootItem->childItems){
         if (i->isOn)
             all += i->path + "\n";
     }
 
-    WSSET(WS_APP_ENABLED_SCRIPTS, all.toAscii().toBase64());
+    WSSET(WS_APP_ENABLED_SCRIPTS, all.toUtf8().toBase64());
 }
 
 ScriptManagerItem::ScriptManagerItem(ScriptManagerItem *parent) :
